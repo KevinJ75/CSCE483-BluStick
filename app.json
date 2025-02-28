@@ -9,12 +9,24 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyB-gXCgSqYeEjBX0iBsRvKzWq8eMoMp9XY"
+      },
+      "bundleIdentifier": "com.csce483blustickgroup.csce483blusticktest",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB-gXCgSqYeEjBX0iBsRvKzWq8eMoMp9XY"
+        }
       }
     },
     "web": {
@@ -36,6 +48,16 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "6960da30-f8c7-4ad6-ba59-be5e76de265e"
+      },
+      "googleMapsApiKey": "AIzaSyB-gXCgSqYeEjBX0iBsRvKzWq8eMoMp9XY"
+    },
+    "owner": "csce483-blustickgroup"
   }
 }
