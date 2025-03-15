@@ -9,7 +9,9 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.carloshdez2002.test1",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -29,6 +31,12 @@
       "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics",
       "expo-router",
+      ["expo-build-properties",
+      {
+        "ios": {
+          "useFrameworks": "static"
+        }
+      }],
       [
         "expo-splash-screen",
         {
