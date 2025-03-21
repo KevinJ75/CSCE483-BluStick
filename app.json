@@ -19,7 +19,12 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.carloshdez2002.test1"
+      "package": "com.carloshdez2002.test1",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDQKj3F60hrjfRNjAH9664bc8mb7v-4Fxk"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

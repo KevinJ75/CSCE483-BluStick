@@ -75,12 +75,13 @@ export default function RootLayout() {
   // }
 
   return (
-    // <ThemeProvider value={DarkTheme}>
+    <ThemeProvider value={DarkTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        {/* <Stack.Screen name="login" options={{ headerShown: false }}/> */}
       </Stack>
-      // <StatusBar style="auto" />
-    // </ThemeProvider>
+       <StatusBar style="auto" />
+   </ThemeProvider>
   );
 }
