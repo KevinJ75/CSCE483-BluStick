@@ -22,7 +22,7 @@
       "package": "com.carloshdez2002.test1",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDQKj3F60hrjfRNjAH9664bc8mb7v-4Fxk"
+          "apiKey": "AIzaSyA-Fv-Q6ROf0gB_-gxu4ErFwPq2cpNgj0g"
         }
       }
     },
@@ -36,6 +36,13 @@
       "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics",
       "expo-router",
+      // [
+      //   "expo-maps",
+      //   {
+      //     "requestLocationPermission": "true"
+      //     // "locationPermission": "Allos $(PRODUCT_NAME) to use your location"
+      //   }
+      // ],
       ["expo-build-properties",
       {
         "ios": {
@@ -66,3 +73,71 @@
     "owner": "carloshdez2002"
   }
 }
+// {
+//   "expo": {
+//     "name": "test1",
+//     "slug": "test1",
+//     "version": "1.0.0",
+//     "orientation": "portrait",
+//     "icon": "./assets/images/icon.png",
+//     "scheme": "myapp",
+//     "userInterfaceStyle": "automatic",
+//     "newArchEnabled": true,
+//     "ios": {
+//       "supportsTablet": true,
+//       "bundleIdentifier": "com.carloshdez2002.test1",
+//       "googleServicesFile": "./GoogleService-Info.plist"
+//     },
+//     "android": {
+//       "googleMaps": {
+//         "apiKey": "AIzaSyDQKj3F60hrjfRNjAH9664bc8mb7v-4Fxk"
+//       },
+//       "googleServicesFile": "./google-services.json",
+//       "adaptiveIcon": {
+//         "foregroundImage": "./assets/images/adaptive-icon.png",
+//         "backgroundColor": "#ffffff"
+//       },
+//       "package": "com.carloshdez2002.test1"
+//     },
+//     "web": {
+//       "bundler": "metro",
+//       "output": "static",
+//       "favicon": "./assets/images/favicon.png"
+//     },
+//     "plugins": [
+//       "@react-native-firebase/app",
+//       "@react-native-firebase/auth",
+//       "@react-native-firebase/crashlytics",
+//       "expo-router",
+//       [
+//         "expo-build-properties",
+//         {
+//           "ios": {
+//             "useFrameworks": "static"
+//           }
+//         }
+//       ],
+//       [
+//         "expo-splash-screen",
+//         {
+//           "image": "./assets/images/splash-icon.png",
+//           "imageWidth": 200,
+//           "resizeMode": "contain",
+//           "backgroundColor": "#ffffff"
+//         }
+//       ]
+//     ],
+//     "experiments": {
+//       "typedRoutes": true
+//     },
+//     "extra": {
+//       "router": {
+//         "origin": false
+//       },
+//       "eas": {
+//         "projectId": "204d76fd-5916-476a-a89e-efaeae4bdc10"
+//       }
+//     },
+//     "owner": "carloshdez2002"
+//   }
+// }
