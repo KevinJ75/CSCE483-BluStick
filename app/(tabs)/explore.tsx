@@ -2,9 +2,7 @@ import React from 'react';
 import { Alert, StyleSheet, View, Text, Image, Pressable } from 'react-native';
 import MapView, { Callout, Marker, Circle } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
-//import styles from "../StyleSheets/StyleSheet2";
 import BottomBar from '@/components/BottomBar';
-
 
 export const markers = [
   {
@@ -48,9 +46,9 @@ const INITIAL_REGION = {
   longitudeDelta: 2,
 };
 
-
 export default function AppMain() {
-  const navigation = useNavigation();
+  const navigation = useNavigation(); // Get the navigation object
+
   return (
     <View style={{ flex: 1 }}>
       {/* MapView */}
@@ -88,7 +86,7 @@ export default function AppMain() {
 
       {/* Bottom Bar */}
       <View style={styles.bottomBarContainer}>
-        <BottomBar />
+        <BottomBar /> {/* Pass navigation prop */}
       </View>
     </View>
   );
