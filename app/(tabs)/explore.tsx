@@ -1,6 +1,10 @@
 import React from 'react';
+import { Alert, StyleSheet, View, Text, Image, Pressable } from 'react-native';
 import MapView, { Callout, Marker, Circle } from 'react-native-maps';
-import { Alert, StyleSheet, View, Text, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+//import styles from "../StyleSheets/StyleSheet2";
+import BottomBar from '@/components/BottomBar';
+
 
 export const markers = [
   {
@@ -35,7 +39,7 @@ export const markers = [
 
 const onMarkerSelected = (marker: any) => {
   Alert.alert(marker.name);
-}
+};
 
 const INITIAL_REGION = {
   latitude: 30.6210,
@@ -44,9 +48,12 @@ const INITIAL_REGION = {
   longitudeDelta: 2,
 };
 
-export default function App() {
+
+export default function AppMain() {
+  const navigation = useNavigation();
   return (
     <View style={{ flex: 1 }}>
+      {/* MapView */}
       <MapView 
         style={StyleSheet.absoluteFill}
         initialRegion={INITIAL_REGION}
@@ -54,9 +61,9 @@ export default function App() {
       >
         {markers.map((marker, index) => (
           <React.Fragment key={index}>
-            <Marker coordinate={marker}>
+            <Marker coordinate={marker} onPress={() => onMarkerSelected(marker)}>
               <Image
-                source={require('@/assets/images/BlueFind.png')}
+                source={require('../../assets/images/BlueFind.png')}
                 style={{ width: 30, height: 30, borderRadius: 5 }}
               />
               <Callout>
@@ -65,7 +72,6 @@ export default function App() {
                 </View>
               </Callout>
             </Marker>
-
             <Circle
               center={{
                 latitude: marker.latitude,
@@ -79,6 +85,23 @@ export default function App() {
           </React.Fragment>
         ))}
       </MapView>
+
+      {/* Bottom Bar */}
+      <View style={styles.bottomBarContainer}>
+        <BottomBar />
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  bottomBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: '40%', // Adjust as needed if content is tall
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+});

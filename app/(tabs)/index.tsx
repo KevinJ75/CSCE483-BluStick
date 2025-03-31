@@ -1,8 +1,7 @@
 // DefaultScreen.tsx
 import * as React from "react";
 import { Image, Text, View, Pressable } from "react-native";
-//import styles from "./StyleSheets/StyleSheet1"; 
-import styles from "../StyleSheets/StyleSheet1"; // Adjusted path
+import styles from "../StyleSheets/StyleSheet1";
 
 const DefaultScreen = () => {
   return (

@@ -1,3 +1,4 @@
+// StyleSheets/DefaultScreenStyles.ts
 import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
@@ -6,20 +7,20 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     height: 917,
-    overflow: "hidden"
+    overflow: "hidden",
   },
   bluefind1Icon: {
     top: 101,
-    height: 256
+    height: 256,
   },
   frameParentPosition: {
     width: 256,
     left: 78,
-    position: "absolute"
+    position: "absolute",
   },
   frameParent: {
     top: 450,
-    gap: 59
+    gap: 59,
   },
   frame: {
     paddingTop: 18,
@@ -32,12 +33,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: {
       width: 0,
-      height: 4
+      height: 4,
     },
     shadowColor: "rgba(0, 0, 0, 0.25)",
     alignSelf: "stretch",
     backgroundColor: "#d9d9d9",
-    overflow: "hidden"
+    overflow: "hidden",
   },
   username: {
     width: 180,
@@ -46,18 +47,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     opacity: 0.3,
     textAlign: "left",
-    color: "#000"
+    color: "#000",
   },
   usernameFlexBox: {
     opacity: 0.3,
     textAlign: "left",
-    color: "#000"
+    color: "#000",
   },
   passwordWrapper: {
     height: 67,
     backgroundColor: "#d9d9d9",
     paddingRight: 20,
-    paddingTop: 22
+    paddingTop: 22,
   },
   password: {
     left: 75,
@@ -65,24 +66,24 @@ const styles = StyleSheet.create({
     height: 24,
     opacity: 0.3,
     textAlign: "left",
-    color: "#000"
+    color: "#000",
   },
   logInWrapper: {
     backgroundColor: "#60d4ff",
-    height: 73
+    height: 73,
   },
   logIn: {
     left: 99,
     color: "#fff",
     textAlign: "right",
-    width: 58
+    width: 58,
   },
   logInPosition: {
     zIndex: 0,
     top: 22,
     fontFamily: "Poppins-Regular",
     fontSize: 20,
-    position: "absolute"
+    position: "absolute",
   },
   wrapperShadowBox: {
     paddingBottom: 21,
@@ -96,12 +97,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: {
       width: 0,
-      height: 4
+      height: 4,
     },
     shadowColor: "rgba(0, 0, 0, 0.25)",
     alignSelf: "stretch",
-    overflow: "hidden"
-  }
+    overflow: "hidden",
+  },
 });
 
 export default styles;
