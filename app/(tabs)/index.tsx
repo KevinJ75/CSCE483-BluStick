@@ -1,11 +1,10 @@
-// DefaultScreen.tsx
 import * as React from "react";
 import { Image, Text, View, Pressable } from "react-native";
 import styles from "../StyleSheets/StyleSheet1";
 
-const DefaultScreen = () => {
+const index = () => {
   return (
-    <View style={styles.defaultScreen}>
+    <View style={styles.index}>
       <Image
         style={[styles.bluefind1Icon, styles.frameParentPosition]}
         resizeMode="cover"
@@ -26,4 +25,4 @@ const DefaultScreen = () => {
   );
 };
 
-export default DefaultScreen;
+export default index;
