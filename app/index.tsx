@@ -9,6 +9,7 @@ export default function loginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
+    const [sign, setSign] = useState(false);
 
     const signUp = async () => {
         setLoading(true);
@@ -20,7 +21,7 @@ export default function loginPage() {
                     });
                 }
             );
-            alert('Check your emails!');
+            // alert('Check your emails!');
             await auth().currentUser?.updateProfile({
                 displayName: name,
             });
@@ -36,7 +37,7 @@ export default function loginPage() {
         setLoading(true);
         try {
             await auth().signInWithEmailAndPassword(email, password);
-            alert('Check your emails!');
+            // alert('Check your emails!');
         } catch (e: any) {
             const err = e as FirebaseError;
             alert('Sign in failed: ' + err.message);
@@ -68,7 +69,7 @@ export default function loginPage() {
                             />
                         </View>
                         <View >
-                            {loading ? (
+                            {sign ? (
                                 // <ActivityIndicator size={'small'} style={{ margin: 28 }} />
                                 <>
                                     <View style={styles.frame}>
@@ -81,7 +82,7 @@ export default function loginPage() {
                                         />
                                     </View>
                                     <Button onPress={signUp} title="Sign Up" />
-                                    <Text style={styles.link} onPress={() => setLoading(false)}>
+                                    <Text style={styles.link} onPress={() => setSign(false)}>
                                         Sign In
                                     </Text>     
                                                        
@@ -89,7 +90,7 @@ export default function loginPage() {
                             ) : (
                                 <>
                                     <Button onPress={signIn} title="Sign In" />
-                                    <Text style={styles.link} onPress={() => setLoading(true)}>
+                                    <Text style={styles.link} onPress={() => setSign(true)}>
                                         Create an Account
                                     </Text>
                                 </>
