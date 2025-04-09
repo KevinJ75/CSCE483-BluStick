@@ -1,33 +1,50 @@
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../FirebaseConfig"; // Ensure the correct path
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../FirebaseConfig';
 
-export const findDuplicateAddresses = async () => {
+export const findCommonAddresses = async (eventIDs: string[]) => {
+  if (!eventIDs || eventIDs.length === 0) return [];
+
   try {
-    const q = query(collection(db, "mac_address_ex"), where("eventID", "==", 464)); // Ensure eventID is queried as a number
-    const querySnapshot = await getDocs(q);
-    console.log("Query executed successfully, found documents:", querySnapshot.size);
+    const addressMap: Record<string, { eventID: string; data: any }[]> = {};
 
-    const addressMap: Record<string, any[]> = {}; // Store full document data
+    // Break eventIDs into chunks of 10 for Firestore `in` queries
+    const chunks = [];
+    for (let i = 0; i < eventIDs.length; i += 10) {
+      chunks.push(eventIDs.slice(i, i + 10));
+    }
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.mac_address) {
-        if (!addressMap[data.mac_address]) {
-          addressMap[data.mac_address] = [];
+    for (const chunk of chunks) {
+      const q = query(
+        collection(db, 'mac_address_ex'),
+        where('eventID', 'in', chunk)
+      );
+      const snapshot = await getDocs(q);
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const mac = data.mac_address;
+        const eventID = data.eventID;
+        if (mac && eventID) {
+          if (!addressMap[mac]) addressMap[mac] = [];
+          addressMap[mac].push({ eventID, data });
         }
-        addressMap[data.mac_address].push(data);
-      }
-    });
+      });
+    }
 
-    // Extract duplicate entries
-    const duplicates = Object.entries(addressMap)
-      .filter(([_, docs]) => docs.length > 1)
-      .map(([mac_address, docs]) => ({ mac_address, occurrences: docs }));
+    // Filter to only MAC addresses present in ALL selected events
+    const commonAddresses = Object.entries(addressMap)
+      .filter(([_, entries]) => {
+        const uniqueEventIDs = new Set(entries.map(e => e.eventID));
+        return uniqueEventIDs.size === eventIDs.length;
+      })
+      .map(([mac_address, entries]) => ({
+        mac_address,
+        occurrences: entries.map(e => e.data),
+      }));
 
-    console.log("Duplicate MAC addresses with full details:", duplicates);
-    return duplicates;
+    console.log('Common MAC addresses across all events:', commonAddresses);
+    return commonAddresses;
   } catch (error) {
-    console.error("Error retrieving duplicate MAC addresses:", error);
+    console.error('Error retrieving common MAC addresses:', error);
     return [];
   }
 };
