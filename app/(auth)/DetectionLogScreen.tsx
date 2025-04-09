@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   },
   bottomBarContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -32,
     left: 0,
     right: 0,
     maxHeight: '40%', // Adjust as needed if content is tall

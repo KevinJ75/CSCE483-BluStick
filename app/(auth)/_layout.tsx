@@ -48,7 +48,7 @@ export default function TabLayout() {
     //     }}
     //   />
     // </Tabs>
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        // <GestureHandlerRootView style={{ flex: 1 }}>
           <Stack>
             <Stack.Screen name="map" options={{ headerShown: false }} />
             <Stack.Screen name="DetectionLogScreen" options={{ headerShown: false }} />
@@ -57,6 +57,6 @@ export default function TabLayout() {
             <Stack.Screen name="QuestionnaireScreen" options={{ headerShown: false }} />
             {/* <Stack.Screen name="login" options={{ headerShown: false }}/> */}
           </Stack>
-        </GestureHandlerRootView>
+        // </GestureHandlerRootView>
   );
 }

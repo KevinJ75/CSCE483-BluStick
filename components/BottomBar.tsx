@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import auth from "@react-native-firebase/auth";
 
 interface CardButtonProps {
   label: string;
@@ -20,7 +21,7 @@ interface CardButtonProps {
 
 // 35% of screen height for the panel
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const PANEL_HEIGHT = 0.35 * SCREEN_HEIGHT;
+const PANEL_HEIGHT = 0.42 * SCREEN_HEIGHT;
 
 const CardButton: React.FC<CardButtonProps> = ({ label, onPress, imageSrc }) => (
   <TouchableOpacity style={styles.card} onPress={onPress}>
@@ -104,6 +105,27 @@ const ButtonBar = () => {
         ]}
         {...panResponder.panHandlers}
       >
+        <View>
+          <TouchableOpacity
+            style={styles.fabButton}
+            onPress={() => {
+              const target = currentSnap === 1 ? 0 : 1;
+            
+              Animated.spring(panY, {
+                toValue: target,
+                useNativeDriver: false,
+                friction: 7,
+                tension: 30,
+              }).start(() => {
+                setCurrentSnap(target);
+              });
+            }}
+            >
+            <Text style={styles.fabText}>
+              {currentSnap === 0 ? '↓' : '↑'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.gridContainer}>
           <CardButton
             label="Detection Logs"
@@ -129,9 +151,16 @@ const ButtonBar = () => {
 
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => router.push('/(tabs)')}
+          onPress={() => auth().signOut()}
         >
           <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.mapButton}
+          onPress={() => router.push('/(auth)/map')}
+        >
+          <Text style={styles.mapText}>Map</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -196,8 +225,9 @@ const styles = StyleSheet.create({
 
   logoutButton: {
     position: 'absolute',
-    bottom: 1,
-    right: 16,
+    bottom: 30,
+    // right: 16,
+    left: 16,
     backgroundColor: '#FF6B6B',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -212,5 +242,72 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  mapButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 16,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  mapText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 40,
+    right: 0,
+    backgroundColor: '#4CAF50',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    zIndex: 10, // ensures it's above other content
+  },
+  fabText: {
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  fabWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  backButton: {
+    backgroundColor: '#34C759', // Green for back
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 120,
+    right: 0,
+    backgroundColor: '#4CAF50',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    zIndex: 10, // ensures it's above other content
   },
 });
