@@ -11,6 +11,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { auth } from '@/FirebaseConfig';
+import { signOut } from 'firebase/auth';
 
 interface CardButtonProps {
   label: string;
@@ -18,9 +20,8 @@ interface CardButtonProps {
   imageSrc: ImageSourcePropType;
 }
 
-// 35% of screen height for the panel
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const PANEL_HEIGHT = 0.35 * SCREEN_HEIGHT;
+const PANEL_HEIGHT = 0.42 * SCREEN_HEIGHT;
 
 const CardButton: React.FC<CardButtonProps> = ({ label, onPress, imageSrc }) => (
   <TouchableOpacity style={styles.card} onPress={onPress}>
@@ -32,20 +33,14 @@ const CardButton: React.FC<CardButtonProps> = ({ label, onPress, imageSrc }) => 
 const ButtonBar = () => {
   const router = useRouter();
 
-  /**
-   * 0 => panel fully shown at bottom,
-   * 1 => panel fully hidden (slid off screen).
-   */
+  // 0 => panel fully shown at bottom, 1 => panel fully hidden (slid off screen).
   const [currentSnap, setCurrentSnap] = useState(1);
-
-  // The animated fraction from 0..1
+  // Animated value tracking the current fraction (0 .. 1)
   const panY = useRef(new Animated.Value(currentSnap)).current;
-
-  // We'll store the fraction that the panel is at when the user first touches down
-  // so the drag movement adds on top of that fraction.
+  // We'll store the fraction when the user first touches.
   const baseFraction = useRef(currentSnap);
 
-  // Interpolate fraction => actual pixel offset
+  // Interpolate fraction to a pixel offset.
   const translateY = panY.interpolate({
     inputRange: [0, 1],
     outputRange: [0, PANEL_HEIGHT],
@@ -55,38 +50,26 @@ const ButtonBar = () => {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-
-      // Called when the user first touches
       onPanResponderGrant: () => {
-        // Stop any running animation & record the current fraction
+        // Stop any running animation and record the current fraction.
         panY.stopAnimation((val: number) => {
-          baseFraction.current = val; 
-          // e.g. if the panel is half open, val might be 0.5
+          baseFraction.current = val;
         });
       },
-
-      // Called as user drags
       onPanResponderMove: (evt, gestureState) => {
-        // newFraction = fraction at the start of gesture + how far they've dragged / total height
         let newFraction = baseFraction.current + gestureState.dy / PANEL_HEIGHT;
-        // clamp 0..1
         if (newFraction < 0) newFraction = 0;
         if (newFraction > 1) newFraction = 1;
-        // Update animated value
         panY.setValue(newFraction);
       },
-
-      // User lets go
       onPanResponderRelease: () => {
-        // We read the final fraction from stopAnimation callback
         panY.stopAnimation((finalVal: number) => {
           const snapTarget = finalVal > 0.5 ? 1 : 0;
           Animated.spring(panY, {
             toValue: snapTarget,
             useNativeDriver: false,
-            // Tweak friction/tension to slow the animation
             friction: 7,
-            tension: 30, 
+            tension: 30,
           }).start(() => {
             setCurrentSnap(snapTarget);
           });
@@ -94,6 +77,15 @@ const ButtonBar = () => {
       },
     })
   ).current;
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      console.log('User signed out successfully.');
+    } catch (error) {
+      console.error('Error during sign out:', error);
+    }
+  };
 
   return (
     <View style={styles.rootContainer}>
@@ -104,6 +96,26 @@ const ButtonBar = () => {
         ]}
         {...panResponder.panHandlers}
       >
+        <View>
+          <TouchableOpacity
+            style={styles.fabButton}
+            onPress={() => {
+              const target = currentSnap === 1 ? 0 : 1;
+              Animated.spring(panY, {
+                toValue: target,
+                useNativeDriver: false,
+                friction: 7,
+                tension: 30,
+              }).start(() => {
+                setCurrentSnap(target);
+              });
+            }}
+          >
+            <Text style={styles.fabText}>
+              {currentSnap === 0 ? '↓' : '↑'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.gridContainer}>
           <CardButton
             label="Detection Logs"
@@ -126,12 +138,17 @@ const ButtonBar = () => {
             imageSrc={require('../assets/images/questionareLogo.png')}
           />
         </View>
-
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => router.push('/(tabs)')}
+          onPress={handleLogout}
         >
           <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.mapButton}
+          onPress={() => router.push('/(tabs)/explore')}
+        >
+          <Text style={styles.mapText}>Map</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -141,34 +158,26 @@ const ButtonBar = () => {
 export default ButtonBar;
 
 const styles = StyleSheet.create({
-  // The main screen container
   rootContainer: {
     flex: 1,
-    backgroundColor: '#EAEAEA', 
+    backgroundColor: '#EAEAEA',
   },
-
-  // The entire bottom panel
   panelContainer: {
     position: 'absolute',
-    // anchor at bottom so it can slide up
     left: -16,
     right: -16,
     bottom: -5,
-    // The panel’s max height
     height: PANEL_HEIGHT,
     backgroundColor: '#F2F2F2',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-
     paddingTop: 16,
     paddingHorizontal: 16,
   },
-
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    
   },
   card: {
     width: '45%',
@@ -193,11 +202,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-
   logoutButton: {
     position: 'absolute',
-    bottom: 1,
-    right: 16,
+    bottom: 30,
+    left: 16,
     backgroundColor: '#FF6B6B',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -211,6 +219,47 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#FFF',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  mapButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 16,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  mapText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 40,
+    right: 0,
+    backgroundColor: '#4CAF50',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    zIndex: 10,
+  },
+  fabText: {
+    fontSize: 24,
+    color: '#fff',
     fontWeight: 'bold',
   },
 });

@@ -86,7 +86,7 @@ export default function AppMain() {
 
       {/* Bottom Bar */}
       <View style={styles.bottomBarContainer}>
-        <BottomBar /> {/* Pass navigation prop */}
+        <BottomBar />
       </View>
     </View>
   );
