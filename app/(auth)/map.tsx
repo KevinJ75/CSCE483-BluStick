@@ -119,6 +119,7 @@ import { StyleSheet, View, Text, Image } from 'react-native';
 import { collection, getDocs, query, updateDoc, doc } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import firestore from '@react-native-firebase/firestore';
+import BottomBar from '@/components/BottomBar';
 
 const INITIAL_REGION = {
   latitude: 30.6210,
@@ -243,6 +244,20 @@ export default function App() {
           </React.Fragment>
         ))}
       </MapView>
+      <View style={styles.bottomBarContainer}>
+        <BottomBar />
+      </View>
     </View>
   );
 }
+const styles = StyleSheet.create({
+  bottomBarContainer: {
+    position: 'absolute',
+    bottom: -32,
+    left: 0,
+    right: 0,
+    maxHeight: '40%', // Adjust as needed if content is tall
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+});
