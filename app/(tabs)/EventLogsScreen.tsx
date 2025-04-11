@@ -1,69 +1,154 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  FlatList,
+} from 'react-native';
 import BottomBar from '@/components/BottomBar';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../FirebaseConfig'; // Make sure this exports your Firestore instance from firebase/app
-// import { findCommonAddresses } from '@/services/firestore'; // Only include if you're using it
+import { collection, getDocs, getFirestore, query, where, orderBy, limit, startAfter, getDoc } from 'firebase/firestore';
+import { db } from '../../FirebaseConfig';
+
+const PAGE_SIZE = 20;
 
 const EventLogsScreen: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [eventIds, setEventIds] = useState<string[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [lastDoc, setLastDoc] = useState<any | null>(null);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    const fetchLogs = async () => {
+    const fetchEventIds = async () => {
+      setLoading(true);
       try {
-        const querySnapshot = await getDocs(collection(db, 'signals'));
-        const logData: any[] = [];
-        querySnapshot.forEach((doc) => {
+        const q = query(collection(db, 'eventIdTest'), orderBy('eventId', 'asc'));
+        const snapshot = await getDocs(q);
+    
+        const idsSet = new Set<string>();
+        snapshot.forEach((doc) => {
           const data = doc.data();
-          logData.push({
-            id: doc.id,
-            event: data.eventId,
-            device: data.DeviceId,
-            address: data.Address,
-            signalStrength: data.signalStrength,
-            time: data.time?.toDate().toLocaleString(),
-          });
+          if (data.eventId) idsSet.add(data.eventId);
         });
-        setLogs(logData);
+    
+        setEventIds(Array.from(idsSet));
       } catch (error) {
-        console.error("Error fetching logs:", error);
+        console.error('Error fetching event IDs:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchLogs();
+    
+    
+
+    fetchEventIds();
   }, []);
+
+  const fetchLogsByEventId = async (eventId: string, reset = false) => {
+    if (loading || (!reset && !hasMore)) return;
+    setLoading(true);
+  
+    try {
+      let q = query(
+        collection(db, 'signals'),
+        where('eventId', '==', eventId),
+        orderBy('time', 'desc'),
+        limit(PAGE_SIZE)
+      );
+  
+      if (lastDoc && !reset) {
+        q = query(
+          collection(db, 'signals'),
+          where('eventId', '==', eventId),
+          orderBy('time', 'desc'),
+          startAfter(lastDoc),
+          limit(PAGE_SIZE)
+        );
+      }
+  
+      const querySnapshot = await getDocs(q);
+      const newLogs: any[] = [];
+  
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        newLogs.push({
+          id: doc.id,
+          device: data.DeviceId,
+          address: data.Address,
+          signalStrength: data.signalStrength,
+          time: data.time?.toDate().toLocaleString(),
+        });
+      });
+  
+      setLogs(reset ? newLogs : [...logs, ...newLogs]);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
+      setHasMore(querySnapshot.docs.length === PAGE_SIZE);
+    } catch (error) {
+      console.error('Pagination error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
+  const onSelectEventId = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setLastDoc(null);
+    setHasMore(true);
+    setLogs([]);
+    fetchLogsByEventId(eventId, true);
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Event Logs</Text>
-      {loading ? (
-        <ActivityIndicator size="large" />
+
+      {!selectedEventId ? (
+        <FlatList
+          data={eventIds}
+          keyExtractor={(id) => id}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => onSelectEventId(item)} style={styles.eventButton}>
+              <Text style={styles.eventButtonText}>Event {item}</Text>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={<Text style={styles.noData}>No Event IDs found</Text>}
+        />
       ) : (
-        <ScrollView horizontal style={styles.tableContainer}>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, styles.tableHeader]}>ID</Text>
-              <Text style={[styles.tableCell, styles.tableHeader]}>Event ID</Text>
-              <Text style={[styles.tableCell, styles.tableHeader]}>Device ID</Text>
-              <Text style={[styles.tableCell, styles.tableHeader]}>Address</Text>
-              <Text style={[styles.tableCell, styles.tableHeader]}>Signal Strength</Text>
-              <Text style={[styles.tableCell, styles.tableHeader]}>Time</Text>
-            </View>
-            {logs.map((item) => (
-              <View key={item.id} style={styles.tableRow}>
-                <Text style={styles.tableCell}>{item.id.slice(0, 6)}</Text>
-                <Text style={styles.tableCell}>{item.event}</Text>
-                <Text style={styles.tableCell}>{item.device}</Text>
-                <Text style={styles.tableCell}>{item.address}</Text>
-                <Text style={styles.tableCell}>{item.signalStrength}</Text>
-                <Text style={styles.tableCell}>{item.time}</Text>
+        <View style={styles.logContainer}>
+          <Text style={styles.subTitle}>Logs for event {selectedEventId}</Text>
+
+          <FlatList
+            data={logs}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.logCard}>
+                <Text style={styles.logText}>Device ID: {item.device}</Text>
+                <Text style={styles.logText}>Address: {item.address}</Text>
+                <Text style={styles.logText}>Signal Strength: {item.signalStrength}</Text>
+                <Text style={styles.logText}>Time: {item.time}</Text>
               </View>
-            ))}
-          </View>
-        </ScrollView>
+            )}
+            onEndReached={() => fetchLogsByEventId(selectedEventId)}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loading ? (
+                <ActivityIndicator size="small" />
+              ) : !hasMore ? (
+                <Text style={styles.endText}>No more logs</Text>
+              ) : null
+            }
+          />
+
+          <TouchableOpacity onPress={() => setSelectedEventId(null)} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back to Event List</Text>
+          </TouchableOpacity>
+        </View>
       )}
+
       <View style={styles.bottomBarContainer}>
         <BottomBar />
       </View>
@@ -72,45 +157,35 @@ const EventLogsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'flex-start',
+  container: { flex: 1, padding: 16 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: 'white', marginTop: 16 },
+  subTitle: { fontSize: 18, fontWeight: '600', marginVertical: 10, color: 'white' },
+  eventButton: {
+    backgroundColor: '#007bff',
+    padding: 12,
+    marginVertical: 6,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  title: {
-    fontSize: 20,
-    marginBottom: 16,
+  eventButtonText: { color: 'white', fontSize: 16 },
+  noData: { textAlign: 'center', marginTop: 20 },
+  logContainer: { flex: 1 },
+  logCard: {
+    backgroundColor: '#333',
+    marginVertical: 6,
+    padding: 12,
+    borderRadius: 8,
   },
-  tableContainer: {
-    width: '100%',
-  },
-  table: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  tableRow: {
-    flexDirection: 'row',
-  },
-  tableCell: {
-    flex: 1,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    textAlign: 'center',
-    color: 'white',
-  },
-  tableHeader: {
-    fontWeight: 'bold',
-    backgroundColor: '#f0f0f0',
-    color: 'black',
-  },
+  logText: { color: 'white' },
+  endText: { textAlign: 'center', marginVertical: 12, color: '#888' },
+  backButton: { marginTop: 12, alignItems: 'center' },
+  backButtonText: { color: '#007bff', fontSize: 16 },
   bottomBarContainer: {
     position: 'absolute',
     bottom: -32,
     left: 0,
     right: 0,
-    maxHeight: '40%',
+    maxHeight: '40%', // Adjust as needed if content is tall
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
