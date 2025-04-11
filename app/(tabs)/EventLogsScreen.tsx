@@ -1,18 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import BottomBar from '@/components/BottomBar';
-import { firestore } from '@/services/firestore'; // Adjust the import based on your project structure
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../FirebaseConfig';
-import { findCommonAddresses } from '@/services/firestore';
-
-// const sampleData = [
-//   { id: '1', event: 'Login', time: '10:00 AM' },
-//   { id: '2', event: 'Logout', time: '10:30 AM' },
-//   { id: '3', event: 'Data Sync', time: '11:00 AM' },
-//   { id: '4', event: 'Error', time: '11:15 AM' },
-// ];
-// const sensorsDb = firestore().collection('signals');
+import { db } from '../../FirebaseConfig'; // Make sure this exports your Firestore instance from firebase/app
+// import { findCommonAddresses } from '@/services/firestore'; // Only include if you're using it
 
 const EventLogsScreen: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
@@ -21,7 +12,7 @@ const EventLogsScreen: React.FC = () => {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const querySnapshot = await firestore().collection('signals').get();
+        const querySnapshot = await getDocs(collection(db, 'signals'));
         const logData: any[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
@@ -46,40 +37,37 @@ const EventLogsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-    <Text style={styles.title}>Event Logs</Text>
-    {loading ? (
-      <ActivityIndicator size="large" />
-    ) : (
-      <ScrollView horizontal style={styles.tableContainer}>
-        <View style={styles.table}>
-          {/* Table Header */}
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCell, styles.tableHeader]}>ID</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Event ID</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Device ID</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Address</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Signal Strength</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Time</Text>
-          </View>
-          {/* Table Rows */}
-          {logs.map((item) => (
-            <View key={item.id} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{item.id.slice(0, 6)}</Text>
-              <Text style={styles.tableCell}>{item.event}</Text>
-              <Text style={styles.tableCell}>{item.device}</Text>
-              <Text style={styles.tableCell}>{item.address}</Text>
-              <Text style={styles.tableCell}>{item.signalStrength}</Text>
-              <Text style={styles.tableCell}>{item.time}</Text>
+      <Text style={styles.title}>Event Logs</Text>
+      {loading ? (
+        <ActivityIndicator size="large" />
+      ) : (
+        <ScrollView horizontal style={styles.tableContainer}>
+          <View style={styles.table}>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, styles.tableHeader]}>ID</Text>
+              <Text style={[styles.tableCell, styles.tableHeader]}>Event ID</Text>
+              <Text style={[styles.tableCell, styles.tableHeader]}>Device ID</Text>
+              <Text style={[styles.tableCell, styles.tableHeader]}>Address</Text>
+              <Text style={[styles.tableCell, styles.tableHeader]}>Signal Strength</Text>
+              <Text style={[styles.tableCell, styles.tableHeader]}>Time</Text>
             </View>
-          ))}
-        </View>
-      </ScrollView>
-    )}
-    <View style={styles.bottomBarContainer}>
-      <BottomBar />
+            {logs.map((item) => (
+              <View key={item.id} style={styles.tableRow}>
+                <Text style={styles.tableCell}>{item.id.slice(0, 6)}</Text>
+                <Text style={styles.tableCell}>{item.event}</Text>
+                <Text style={styles.tableCell}>{item.device}</Text>
+                <Text style={styles.tableCell}>{item.address}</Text>
+                <Text style={styles.tableCell}>{item.signalStrength}</Text>
+                <Text style={styles.tableCell}>{item.time}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+      <View style={styles.bottomBarContainer}>
+        <BottomBar />
+      </View>
     </View>
-  </View>
-
   );
 };
 
@@ -115,13 +103,14 @@ const styles = StyleSheet.create({
   tableHeader: {
     fontWeight: 'bold',
     backgroundColor: '#f0f0f0',
+    color: 'black',
   },
   bottomBarContainer: {
     position: 'absolute',
     bottom: -32,
     left: 0,
     right: 0,
-    maxHeight: '40%', // Adjust as needed if content is tall
+    maxHeight: '40%',
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
