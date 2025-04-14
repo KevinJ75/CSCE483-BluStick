@@ -8,6 +8,10 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import BottomBar from '@/components/BottomBar';
 import { auth, db } from '@/FirebaseConfig';
@@ -94,59 +98,65 @@ const ObservationLogScreen: React.FC = () => {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Observation Log</Text>
-
-      <Text style={styles.label}>Observation:</Text>
-      <TextInput
-        style={styles.observationInput}
-        placeholder="Enter Observation"
-        value={observation}
-        onChangeText={setObservation}
-        multiline
-        numberOfLines={10}
-        placeholderTextColor="#aaa"
-      />
-
-      <Text style={styles.label}>Full Name:</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Full Name"
-        value={detail}
-        onChangeText={setDetail}
-        placeholderTextColor="#aaa"
-      />
-
-      <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-        <Text style={styles.submitButtonText}>Submit</Text>
-      </TouchableOpacity>
-
-      <ScrollView horizontal style={styles.tableContainer}>
-        <View style={styles.table}>
-          {/* Header */}
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCell, styles.tableHeader]}>User</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Observation</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Detail</Text>
-          </View>
-
-          {/* Rows */}
-          {observations.map((item) => (
-            <View key={item.id} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{item.user}</Text>
-              <Text style={styles.tableCell}>{item.observation}</Text>
-              <Text style={styles.tableCell}>{item.detail}</Text>
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            <Text style={styles.title}>Observation Log</Text>
+    
+            <Text style={styles.label}>Observation:</Text>
+            <TextInput
+              style={styles.observationInput}
+              placeholder="Enter Observation"
+              value={observation}
+              onChangeText={setObservation}
+              multiline
+              numberOfLines={10}
+              placeholderTextColor="#aaa"
+            />
+    
+            <Text style={styles.label}>Full Name:</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Full Name"
+              value={detail}
+              onChangeText={setDetail}
+              placeholderTextColor="#aaa"
+            />
+    
+            <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
+              <Text style={styles.submitButtonText}>Submit</Text>
+            </TouchableOpacity>
+    
+            <ScrollView horizontal style={styles.tableContainer}>
+              <View style={styles.table}>
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.tableHeader]}>User</Text>
+                  <Text style={[styles.tableCell, styles.tableHeader]}>Observation</Text>
+                  <Text style={[styles.tableCell, styles.tableHeader]}>Detail</Text>
+                </View>
+    
+                {observations.map((item) => (
+                  <View key={item.id} style={styles.tableRow}>
+                    <Text style={styles.tableCell}>{item.user}</Text>
+                    <Text style={styles.tableCell}>{item.observation}</Text>
+                    <Text style={styles.tableCell}>{item.detail}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+    
+            <View style={styles.bottomBarContainer}>
+              <BottomBar />
             </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      <View style={styles.bottomBarContainer}>
-        <BottomBar />
-      </View>
-    </View>
-  );
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    );
+    
 };
 
 export default ObservationLogScreen;

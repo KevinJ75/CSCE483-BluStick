@@ -45,8 +45,8 @@ export default function App() {
             eventTrigger: isTriggered,
           });
 
-          // 🔥 Check and reset eventTrigger if needed
-          if (isTriggered && data.lastUpdated && (data.bluStickId == DEVICE_BLU_STICK_ID)) {
+          // Check and reset eventTrigger if needed
+          if (isTriggered && data.lastUpdated) {
             const docRef = doc(db, 'bluStickDevices', docSnap.id);
             await updateDoc(docRef, { eventTrigger: false });
 
@@ -71,67 +71,69 @@ export default function App() {
               }
             ]);
             
-            const collectDocsFrom = async (
-              source: 'ble' | 'wifi',
-              bluStickId: number,
-              lastUpdated: Timestamp
-            ) => {
-              const lastUpdatedDate = lastUpdated.toDate();
-              const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
+            if(data.bluStickId === DEVICE_BLU_STICK_ID) {
+              const collectDocsFrom = async (
+                source: 'ble' | 'wifi',
+                bluStickId: number,
+                lastUpdated: Timestamp
+              ) => {
+                const lastUpdatedDate = lastUpdated.toDate();
+                const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
+                
+                const sourceQuery = query(
+                  collection(db, source),
+                  where('bluStickId', '==', bluStickId),
+                  where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
+                  where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
+                );
+
+                // console.log(`Querying ${source} for bluStickId ${bluStickId} between ${fiveMinsAgo} and ${lastUpdated}`);
               
-              const sourceQuery = query(
-                collection(db, source),
-                where('bluStickId', '==', bluStickId),
-                where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
-                where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
-              );
+                const sourceSnap = await getDocs(sourceQuery);
 
-              console.log(`Querying ${source} for bluStickId ${bluStickId} between ${fiveMinsAgo} and ${lastUpdated}`);
-            
-              const sourceSnap = await getDocs(sourceQuery);
-
-              const uniqueDocsMap = new Map<string, any>();
-            
-              sourceSnap.forEach(doc => {
-                const data = doc.data();
-                const mac = data.macAddress;
-                if (!uniqueDocsMap.has(mac)) {
-                  uniqueDocsMap.set(mac, {
-                    ...data,
-                    wasDetected: false,
-                    // parentBluStickId: bluStickId,
-                    // triggeredAt: lastUpdated,
-                  });
-                }
-              });
-            
-              return Array.from(uniqueDocsMap.values());
-            };
-            
-            
-            // inside for-loop for each triggered bluStick:
-            const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
-            const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
-            
-            
-            // Batch write BLE docs to "beat"
-            if (bleDocs.length > 0) {
-              const batch = writeBatch(db);
-              bleDocs.forEach(docData => {
-                const newRef = doc(collection(db, 'beat'));
-                batch.set(newRef, docData);
-              });
-              await batch.commit();
-            }
-            
-            // Batch write WiFi docs to "weat"
-            if (wifiDocs.length > 0) {
-              const batch = writeBatch(db);
-              wifiDocs.forEach(docData => {
-                const newRef = doc(collection(db, 'weat'));
-                batch.set(newRef, docData);
-              });
-              await batch.commit();
+                const uniqueDocsMap = new Map<string, any>();
+              
+                sourceSnap.forEach(doc => {
+                  const data = doc.data();
+                  const mac = data.macAddress;
+                  if (!uniqueDocsMap.has(mac)) {
+                    uniqueDocsMap.set(mac, {
+                      ...data,
+                      wasDetected: false,
+                      // parentBluStickId: bluStickId,
+                      // triggeredAt: lastUpdated,
+                    });
+                  }
+                });
+              
+                return Array.from(uniqueDocsMap.values());
+              };
+              
+              
+              // inside for-loop for each triggered bluStick:
+              const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
+              const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
+              
+              
+              // Batch write BLE docs to "beat"
+              if (bleDocs.length > 0) {
+                const batch = writeBatch(db);
+                bleDocs.forEach(docData => {
+                  const newRef = doc(collection(db, 'beat'));
+                  batch.set(newRef, docData);
+                });
+                await batch.commit();
+              }
+              
+              // Batch write WiFi docs to "weat"
+              if (wifiDocs.length > 0) {
+                const batch = writeBatch(db);
+                wifiDocs.forEach(docData => {
+                  const newRef = doc(collection(db, 'weat'));
+                  batch.set(newRef, docData);
+                });
+                await batch.commit();
+              }
             }
           }
         }
@@ -247,10 +249,10 @@ export default function App() {
 const styles = StyleSheet.create({
   bottomBarContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -32,
     left: 0,
     right: 0,
-    maxHeight: '40%',
+    maxHeight: '40%', // Adjust as needed if content is tall
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },

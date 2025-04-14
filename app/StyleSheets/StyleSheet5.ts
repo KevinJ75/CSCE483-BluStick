@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#fff',
     width: '100%',
-    height: screenHeight / 2,
+    height: screenHeight / 3,
     textAlignVertical: 'top',
   },
   input: {
@@ -78,9 +78,10 @@ const styles = StyleSheet.create({
   },
   bottomBarContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -32,
     left: 0,
     right: 0,
+    maxHeight: '40%', // Adjust as needed if content is tall
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
