@@ -5,6 +5,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
 import { findCommonAddresses } from '@/services/firestore';
 import BottomBar from '@/components/BottomBar';
+import styles from '@/app/StyleSheets/StyleSheet3';
 
 const DetectionLogsScreen: React.FC = () => {
   const [duplicates, setDuplicates] = useState<
@@ -107,56 +108,5 @@ const DetectionLogsScreen: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    marginBottom: 12,
-  },
-  tableContainer: {
-    width: '100%',
-    marginTop: 16,
-  },
-  table: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  tableRow: {
-    flexDirection: 'row',
-  },
-  tableCell: {
-    flex: 1,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    textAlign: 'center',
-    color: '#000',
-  },
-  tableHeader: {
-    fontWeight: 'bold',
-    backgroundColor: '#f0f0f0',
-  },
-  tableEntry: {
-    color: '#fff',
-  },
-  multiSelect: {
-    width: '100%',
-  },
-  bottomBarContainer: {
-    position: 'absolute',
-    bottom: -32,
-    left: 0,
-    right: 0,
-    maxHeight: '40%', // Adjust as needed if content is tall
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-});
 
 export default DetectionLogsScreen;

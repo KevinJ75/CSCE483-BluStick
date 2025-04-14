@@ -1,43 +1,11 @@
-import React from 'react';
-import { Alert, StyleSheet, View, Text, Image, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import MapView, { Callout, Marker, Circle } from 'react-native-maps';
-import { useNavigation } from '@react-navigation/native';
+import { StyleSheet, View, Text, Image } from 'react-native';
+import { collection, getDocs, query, updateDoc, doc, getDoc, setDoc, where } from 'firebase/firestore';
+import { db } from '@/FirebaseConfig';
+import * as Location from 'expo-location';
 import BottomBar from '@/components/BottomBar';
-
-export const markers = [
-  {
-    latitude: 30.6210,
-    longitude: -96.3255,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-    name: '449',
-  },
-  {
-    latitude: 30.55,
-    longitude: -96.35,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-    name: '450',
-  },
-  {
-    latitude: 30.68,
-    longitude: -96.33,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-    name: '451',
-  },
-  {
-    latitude: 30.62,
-    longitude: -96.25,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-    name: '452',
-  }
-];
-
-const onMarkerSelected = (marker: any) => {
-  Alert.alert(marker.name);
-};
+import { writeBatch, Timestamp } from 'firebase/firestore';
 
 const INITIAL_REGION = {
   latitude: 30.6210,
@@ -46,45 +14,229 @@ const INITIAL_REGION = {
   longitudeDelta: 2,
 };
 
-export default function AppMain() {
-  const navigation = useNavigation(); // Get the navigation object
+const DEVICE_BLU_STICK_ID = 300;
+
+export default function App() {
+  const [liveMarkers, setLiveMarkers] = useState<any[]>([]);
+  const [selectedMarker, setSelectedMarker] = useState<number | null>(null);
+  const [highlightedMarkers, setHighlightedMarkers] = useState<any[]>([]);
+  const [blackPins, setBlackPins] = useState<any[]>([]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const fetchMarkersAndCheckEvents = async () => {
+      const q = query(collection(db, 'bluStickDevices'));
+      const snapshot = await getDocs(q);
+      const newMarkers: any[] = [];
+
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        if (data.lat && data.long) {
+          const isTriggered = data.eventTrigger === true;
+          // console.log(`Device ${data.bluStickId} eventTrigger: ${isTriggered}`);
+
+          newMarkers.push({
+            latitude: data.lat,
+            longitude: data.long,
+            name: `${data.bluStickId}`,
+            id: docSnap.id,
+            bluStickId: data.bluStickId,
+            eventTrigger: isTriggered,
+          });
+
+          // 🔥 Check and reset eventTrigger if needed
+          if (isTriggered && data.lastUpdated && (data.bluStickId == DEVICE_BLU_STICK_ID)) {
+            const docRef = doc(db, 'bluStickDevices', docSnap.id);
+            await updateDoc(docRef, { eventTrigger: false });
+
+            const lastUpdated = data.lastUpdated.toDate();
+            console.log('Last updated:', lastUpdated);
+            // const fiveMinsAgo = new Date(lastUpdated.getTime() - 5 * 60 * 1000);
+
+             //  Red Circle: track in highlightedMarkers for 1 minute
+            setHighlightedMarkers(prev => [
+              ...prev,
+              { id: docSnap.id, expiresAt: Date.now() + 60_000 }
+            ]);
+
+            // Black Pin: track for 2 minutes (It's called blackpins but this code is pertaining to the event markers)
+            setBlackPins(prev => [
+              ...prev,
+              {
+                latitude: data.lat,
+                longitude: data.long,
+                id: `black-${Date.now()}`,
+                expiresAt: Date.now() + 120_000
+              }
+            ]);
+            
+            const collectDocsFrom = async (
+              source: 'ble' | 'wifi',
+              bluStickId: number,
+              lastUpdated: Timestamp
+            ) => {
+              const lastUpdatedDate = lastUpdated.toDate();
+              const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
+              
+              const sourceQuery = query(
+                collection(db, source),
+                where('bluStickId', '==', bluStickId),
+                where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
+                where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
+              );
+
+              console.log(`Querying ${source} for bluStickId ${bluStickId} between ${fiveMinsAgo} and ${lastUpdated}`);
+            
+              const sourceSnap = await getDocs(sourceQuery);
+
+              const uniqueDocsMap = new Map<string, any>();
+            
+              sourceSnap.forEach(doc => {
+                const data = doc.data();
+                const mac = data.macAddress;
+                if (!uniqueDocsMap.has(mac)) {
+                  uniqueDocsMap.set(mac, {
+                    ...data,
+                    wasDetected: false,
+                    // parentBluStickId: bluStickId,
+                    // triggeredAt: lastUpdated,
+                  });
+                }
+              });
+            
+              return Array.from(uniqueDocsMap.values());
+            };
+            
+            
+            // inside for-loop for each triggered bluStick:
+            const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
+            const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
+            
+            
+            // Batch write BLE docs to "beat"
+            if (bleDocs.length > 0) {
+              const batch = writeBatch(db);
+              bleDocs.forEach(docData => {
+                const newRef = doc(collection(db, 'beat'));
+                batch.set(newRef, docData);
+              });
+              await batch.commit();
+            }
+            
+            // Batch write WiFi docs to "weat"
+            if (wifiDocs.length > 0) {
+              const batch = writeBatch(db);
+              wifiDocs.forEach(docData => {
+                const newRef = doc(collection(db, 'weat'));
+                batch.set(newRef, docData);
+              });
+              await batch.commit();
+            }
+          }
+        }
+      }
+        // Clear expired visual effects
+      const now = Date.now();
+      setHighlightedMarkers(prev => prev.filter(m => m.expiresAt > now));
+      setBlackPins(prev => prev.filter(p => p.expiresAt > now));
+
+      setLiveMarkers(newMarkers);
+    };
+
+    const updateOwnLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('Location permission not granted');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      const q = query(collection(db, 'bluStickDevices'));
+      const snapshot = await getDocs(q);
+
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        if (data.bluStickId === DEVICE_BLU_STICK_ID) {
+          const docRef = doc(db, 'bluStickDevices', docSnap.id);
+          try {
+            await updateDoc(docRef, {
+              lat: latitude,
+              long: longitude,
+            });
+          } catch (error) {
+            console.error(`❌ Failed to update device ${DEVICE_BLU_STICK_ID}:`, error);
+          }
+        }
+      }
+    };
+
+    fetchMarkersAndCheckEvents();
+    updateOwnLocation();
+
+    interval = setInterval(() => {
+      fetchMarkersAndCheckEvents();
+      updateOwnLocation();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <View style={{ flex: 1 }}>
-      {/* MapView */}
-      <MapView 
+      <MapView
         style={StyleSheet.absoluteFill}
         initialRegion={INITIAL_REGION}
-        mapType={'hybrid'}
+        mapType="hybrid"
       >
-        {markers.map((marker, index) => (
-          <React.Fragment key={index}>
-            <Marker coordinate={marker} onPress={() => onMarkerSelected(marker)}>
-              <Image
-                source={require('../../assets/images/BlueFind.png')}
-                style={{ width: 30, height: 30, borderRadius: 5 }}
+        {liveMarkers.map((marker, index) => {
+          const isHighlighted = highlightedMarkers.some(h => h.id === marker.id);
+          return (
+            <React.Fragment key={index}>
+              <Marker
+                coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+                // onPress={() => setSelectedMarker(index)}
+              >
+                <Image
+                  source={require('@/assets/images/BlueFind.png')}
+                  style={{ width: 30, height: 30, borderRadius: 5 }}
+                />
+                <Callout>
+                  <View style={{ padding: 0 }}>
+                    <Text>{marker.name}</Text>
+                  </View>
+                </Callout>
+              </Marker>
+
+              <Circle
+                center={{ latitude: marker.latitude, longitude: marker.longitude }}
+                radius={500}
+                strokeColor={isHighlighted || selectedMarker === index ? "red" : "rgba(250, 251, 252, 0.7)"}
+                fillColor={isHighlighted || selectedMarker === index ? "rgba(255, 0, 0, 0.3)" : "rgba(248, 249, 250, 0.3)"}
+                strokeWidth={2}
               />
-              <Callout>
-                <View style={{ padding: 0 }}>
-                  <Text>{marker.name}</Text>
-                </View>
-              </Callout>
-            </Marker>
-            <Circle
-              center={{
-                latitude: marker.latitude,
-                longitude: marker.longitude,
-              }}
-              radius={500} // Radius in meters
-              strokeColor="rgba(250, 251, 252, 0.7)"
-              fillColor="rgba(248, 249, 250, 0.3)"
-              strokeWidth={2}
-            />
-          </React.Fragment>
+            </React.Fragment>
+          );
+        })}
+
+        {blackPins.map(pin => (
+          <Marker
+          key={pin.id}
+          coordinate={{
+            latitude: pin.latitude,
+            longitude: pin.longitude
+          }}
+        >
+          <Image
+            source={require('@/assets/images/eventIcon.png')}
+            style={{ width: 35, height: 35 }}
+          />
+        </Marker>
         ))}
       </MapView>
 
-      {/* Bottom Bar */}
       <View style={styles.bottomBarContainer}>
         <BottomBar />
       </View>
@@ -98,7 +250,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    maxHeight: '40%', // Adjust as needed if content is tall
+    maxHeight: '40%',
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
