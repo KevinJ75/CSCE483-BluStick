@@ -50,7 +50,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (e: any) {
       const err = e as FirebaseError;
-      alert("Sign in failed: " + err.message);
+      alert("Sign in failed: password or username is incorrect");
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function LoginPage() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
-              placeholder="Email"
+              placeholder="email"
               placeholderTextColor="#666"
             />
           </View>
