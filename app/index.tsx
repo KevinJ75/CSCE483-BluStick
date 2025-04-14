@@ -16,6 +16,8 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
+import styles from '@/app/StyleSheets/StyleSheet7';
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -71,6 +73,7 @@ export default function LoginPage() {
               autoCapitalize="none"
               keyboardType="email-address"
               placeholder="Email"
+              placeholderTextColor="#666"
             />
           </View>
           <View style={styles.frame}>
@@ -80,6 +83,7 @@ export default function LoginPage() {
               onChangeText={setPassword}
               secureTextEntry
               placeholder="Password"
+              placeholderTextColor="#666"
             />
           </View>
           <View>
@@ -115,61 +119,3 @@ export default function LoginPage() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  frameParentPosition: {
-    width: 256,
-    left: "16%",
-    justifyContent: "center",
-    position: "relative",
-  },
-  usernameFlexBox: {
-    opacity: 0.3,
-    textAlign: "left",
-    color: "#000",
-  },
-  bluefind1Icon: {
-    height: 256,
-  },
-  username: {
-    width: "100%",
-    height: 31,
-    fontFamily: "Poppins-Regular",
-    fontSize: 20,
-    opacity: 0.3,
-    textAlign: "left",
-    color: "#000",
-  },
-  frame: {
-    paddingTop: 18,
-    paddingBottom: 18,
-    flexDirection: "row",
-    borderRadius: 10,
-    shadowOpacity: 1,
-    elevation: 4,
-    shadowRadius: 4,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowColor: "rgba(0, 0, 0, 0.25)",
-    backgroundColor: "#d9d9d9",
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  frameParent: {
-    gap: 30,
-  },
-  defaultScreen: {
-    backgroundColor: "#3eaeef",
-    flex: 1,
-    width: "100%",
-    overflow: "scroll",
-    justifyContent: "center",
-  },
-  link: {
-    marginTop: 18,
-    color: "#007AFF",
-    textAlign: "center",
-  },
-});
