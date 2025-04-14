@@ -7,9 +7,10 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import BottomBar from '@/components/BottomBar';
-import { auth, db } from '@/FirebaseConfig'; // adjust path as needed
+import { auth, db } from '@/FirebaseConfig';
 import {
   collection,
   addDoc,
@@ -18,6 +19,8 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
+
+const screenHeight = Dimensions.get('window').height;
 
 interface Observation {
   id: string;
@@ -94,18 +97,26 @@ const ObservationLogScreen: React.FC = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Observation Log</Text>
 
+      <Text style={styles.label}>Observation:</Text>
       <TextInput
-        style={styles.input}
+        style={styles.observationInput}
         placeholder="Enter Observation"
         value={observation}
         onChangeText={setObservation}
+        multiline
+        numberOfLines={10}
+        placeholderTextColor="#aaa"
       />
+
+      <Text style={styles.label}>Full Name:</Text>
       <TextInput
         style={styles.input}
-        placeholder="Enter Detail"
+        placeholder="Enter Full Name"
         value={detail}
         onChangeText={setDetail}
+        placeholderTextColor="#aaa"
       />
+
       <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
         <Text style={styles.submitButtonText}>Submit</Text>
       </TouchableOpacity>
@@ -148,12 +159,31 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  input: {
+  label: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#000',
+  },
+  observationInput: {
+    backgroundColor: '#2f2f2f',
     borderWidth: 1,
-    borderColor: '#aaa',
+    borderColor: '#ccc',
     borderRadius: 8,
     padding: 10,
     marginBottom: 10,
+    color: '#fff',
+    width: '100%',
+    height: screenHeight / 2,
+    textAlignVertical: 'top',
+  },
+  input: {
+    backgroundColor: '#2f2f2f',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    color: '#fff',
     width: '100%',
   },
   submitButton: {

@@ -1,4 +1,4 @@
-import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -63,8 +63,8 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={DarkTheme}>
-      <Stack>
+    <ThemeProvider value={DefaultTheme}>
+      <Stack screenOptions={{ headerStyle: { backgroundColor: '#ffffff' }, headerTintColor: '#000000' }}>
         {/* The login page should be defined in app/index */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
         {/* Protected routes */}
