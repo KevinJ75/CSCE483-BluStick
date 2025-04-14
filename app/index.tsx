@@ -38,7 +38,7 @@ export default function LoginPage() {
       await updateProfile(userCredential.user, { displayName: name });
     } catch (e: any) {
       const err = e as FirebaseError;
-      alert("Registration failed: " + err.message);
+      alert("Registration failed: Username is invalid or already exists.");
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (e: any) {
       const err = e as FirebaseError;
-      alert("Sign in failed: password or username is incorrect");
+      alert("Sign in failed: username password or is incorrect.");
     } finally {
       setLoading(false);
     }
