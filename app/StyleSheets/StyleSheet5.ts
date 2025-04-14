@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
+  
 });
 
 export default styles;
