@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import BottomBar from '@/components/BottomBar';
+import styles from '@/app/Stylesheets/StyleSheet4'
 
 const PAGE_SIZE = 20;
 
@@ -146,39 +147,39 @@ const EventLogsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: 'white', marginTop: 16 },
-  subTitle: { fontSize: 18, fontWeight: '600', marginVertical: 10, color: 'white' },
-  eventButton: {
-    backgroundColor: '#007bff',
-    padding: 12,
-    marginVertical: 6,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  eventButtonText: { color: 'white', fontSize: 16 },
-  noData: { textAlign: 'center', marginTop: 20 },
-  logContainer: { flex: 1 },
-  logCard: {
-    backgroundColor: '#333',
-    marginVertical: 6,
-    padding: 12,
-    borderRadius: 8,
-  },
-  logText: { color: 'white' },
-  endText: { textAlign: 'center', marginVertical: 12, color: '#888' },
-  backButton: { marginTop: 12, alignItems: 'center' },
-  backButtonText: { color: '#007bff', fontSize: 16 },
-  bottomBarContainer: {
-    position: 'absolute',
-    bottom: -32,
-    left: 0,
-    right: 0,
-    maxHeight: '40%', // Adjust as needed if content is tall
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-});
+// const styles = StyleSheet.create({
+//   container: { flex: 1, padding: 16 },
+//   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: 'white', marginTop: 16 },
+//   subTitle: { fontSize: 18, fontWeight: '600', marginVertical: 10, color: 'white' },
+//   eventButton: {
+//     backgroundColor: '#007bff',
+//     padding: 12,
+//     marginVertical: 6,
+//     borderRadius: 8,
+//     alignItems: 'center',
+//   },
+//   eventButtonText: { color: 'white', fontSize: 16 },
+//   noData: { textAlign: 'center', marginTop: 20 },
+//   logContainer: { flex: 1 },
+//   logCard: {
+//     backgroundColor: '#333',
+//     marginVertical: 6,
+//     padding: 12,
+//     borderRadius: 8,
+//   },
+//   logText: { color: 'white' },
+//   endText: { textAlign: 'center', marginVertical: 12, color: '#888' },
+//   backButton: { marginTop: 12, alignItems: 'center' },
+//   backButtonText: { color: '#007bff', fontSize: 16 },
+//   bottomBarContainer: {
+//     position: 'absolute',
+//     bottom: -32,
+//     left: 0,
+//     right: 0,
+//     maxHeight: '40%', // Adjust as needed if content is tall
+//     padding: 16,
+//     backgroundColor: 'rgba(255, 255, 255, 0.9)',
+//   },
+// });
 
 export default EventLogsScreen;

@@ -27,7 +27,7 @@ export default function loginPage() {
             });
         } catch (e: any) {
             const err = e as FirebaseError;
-            alert('Registration failed: ' + err.message);
+            alert('Registration failed: username is invalid or already exist.');
         } finally {
             setLoading(false);
         }
@@ -40,7 +40,7 @@ export default function loginPage() {
             // alert('Check your emails!');
         } catch (e: any) {
             const err = e as FirebaseError;
-            alert('Sign in failed: ' + err.message);
+            alert('Sign in failed: username or password is incorrect.');
         } finally {
             setLoading(false);
         }
