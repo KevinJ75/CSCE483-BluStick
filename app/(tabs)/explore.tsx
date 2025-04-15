@@ -7,7 +7,7 @@ import * as Location from 'expo-location';
 import BottomBar from '@/components/BottomBar';
 import { writeBatch, Timestamp } from 'firebase/firestore';
 
-const INITIAL_REGION = {
+const INITIAL_REGION = { //Region of initial focus for the map
   latitude: 30.6210,
   longitude: -96.3255,
   latitudeDelta: 2,
@@ -45,22 +45,13 @@ export default function App() {
             eventTrigger: isTriggered,
           });
 
-          // 🔥 Check and reset eventTrigger if needed
-          if (isTriggered && data.lastUpdated && (data.bluStickId == DEVICE_BLU_STICK_ID)) {
-            const docRef = doc(db, 'bluStickDevices', docSnap.id);
-            await updateDoc(docRef, { eventTrigger: false });
-
-            const lastUpdated = data.lastUpdated.toDate();
-            console.log('Last updated:', lastUpdated);
-            // const fiveMinsAgo = new Date(lastUpdated.getTime() - 5 * 60 * 1000);
-
-             // ✅ Red Circle: track in highlightedMarkers for 1 minute
+          if (isTriggered && data.lastUpdated) {
+            // ✅ All apps: Visual indicators
             setHighlightedMarkers(prev => [
               ...prev,
               { id: docSnap.id, expiresAt: Date.now() + 60_000 }
             ]);
-
-            // ✅ Black Pin: track for 2 minutes (It's called blackpins but this code is pertaining to the event markers)
+          
             setBlackPins(prev => [
               ...prev,
               {
@@ -70,70 +61,74 @@ export default function App() {
                 expiresAt: Date.now() + 120_000
               }
             ]);
-            
-            const collectDocsFrom = async (
-              source: 'ble' | 'wifi',
-              bluStickId: number,
-              lastUpdated: Timestamp
-            ) => {
-              const lastUpdatedDate = lastUpdated.toDate();
-              const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
+          
+            // 🔒 Only this app handles event reset & database querying
+            if (data.bluStickId === DEVICE_BLU_STICK_ID) {
+              const docRef = doc(db, 'bluStickDevices', docSnap.id);
+
+              setTimeout(async () => {
+                await updateDoc(docRef, { eventTrigger: false });
+              }, 4500); // Wait 4.5 seconds
               
-              const sourceQuery = query(
-                collection(db, source),
-                where('bluStickId', '==', bluStickId),
-                where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
-                where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
-              );
-
-              console.log(`Querying ${source} for bluStickId ${bluStickId} between ${fiveMinsAgo} and ${lastUpdated}`);
-            
-              const sourceSnap = await getDocs(sourceQuery);
-
-              const uniqueDocsMap = new Map<string, any>();
-            
-              sourceSnap.forEach(doc => {
-                const data = doc.data();
-                const mac = data.macAddress;
-                if (!uniqueDocsMap.has(mac)) {
-                  uniqueDocsMap.set(mac, {
-                    ...data,
-                    wasDetected: false,
-                    // parentBluStickId: bluStickId,
-                    // triggeredAt: lastUpdated,
-                  });
-                }
-              });
-            
-              return Array.from(uniqueDocsMap.values());
-            };
-            
-            
-            // inside for-loop for each triggered bluStick:
-            const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
-            const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
-            
-            
-            // Batch write BLE docs to "beat"
-            if (bleDocs.length > 0) {
-              const batch = writeBatch(db);
-              bleDocs.forEach(docData => {
-                const newRef = doc(collection(db, 'beat'));
-                batch.set(newRef, docData);
-              });
-              await batch.commit();
-            }
-            
-            // Batch write WiFi docs to "weat"
-            if (wifiDocs.length > 0) {
-              const batch = writeBatch(db);
-              wifiDocs.forEach(docData => {
-                const newRef = doc(collection(db, 'weat'));
-                batch.set(newRef, docData);
-              });
-              await batch.commit();
+          
+              const lastUpdated = data.lastUpdated.toDate();
+          
+              const collectDocsFrom = async (
+                source: 'ble' | 'wifi',
+                bluStickId: number,
+                lastUpdated: Timestamp
+              ) => {
+                const lastUpdatedDate = lastUpdated.toDate();
+                const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
+          
+                const sourceQuery = query(
+                  collection(db, source),
+                  where('bluStickId', '==', bluStickId),
+                  where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
+                  where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
+                );
+          
+                const sourceSnap = await getDocs(sourceQuery);
+                const uniqueDocsMap = new Map<string, any>();
+          
+                sourceSnap.forEach(doc => {
+                  const data = doc.data();
+                  const mac = data.macAddress;
+                  if (!uniqueDocsMap.has(mac)) {
+                    uniqueDocsMap.set(mac, {
+                      ...data,
+                      wasDetected: false,
+                      matchbluStickId: null
+                    });
+                  }
+                });
+          
+                return Array.from(uniqueDocsMap.values());
+              };
+          
+              const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
+              const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
+          
+              if (bleDocs.length > 0) {
+                const batch = writeBatch(db);
+                bleDocs.forEach(docData => {
+                  const newRef = doc(collection(db, 'beat'));
+                  batch.set(newRef, docData);
+                });
+                await batch.commit();
+              }
+          
+              if (wifiDocs.length > 0) {
+                const batch = writeBatch(db);
+                wifiDocs.forEach(docData => {
+                  const newRef = doc(collection(db, 'weat'));
+                  batch.set(newRef, docData);
+                });
+                await batch.commit();
+              }
             }
           }
+          
         }
       }
         // Clear expired visual effects
@@ -221,7 +216,6 @@ export default function App() {
           );
         })}
 
-        // 🔘 Black Pins
         {blackPins.map(pin => (
           <Marker
           key={pin.id}
