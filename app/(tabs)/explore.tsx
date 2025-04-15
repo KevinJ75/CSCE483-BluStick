@@ -207,7 +207,7 @@ export default function App() {
 
               <Circle
                 center={{ latitude: marker.latitude, longitude: marker.longitude }}
-                radius={500}
+                radius={250}
                 strokeColor={isHighlighted || selectedMarker === index ? "red" : "rgba(250, 251, 252, 0.7)"}
                 fillColor={isHighlighted || selectedMarker === index ? "rgba(255, 0, 0, 0.3)" : "rgba(248, 249, 250, 0.3)"}
                 strokeWidth={2}
