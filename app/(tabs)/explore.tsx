@@ -7,7 +7,7 @@ import * as Location from 'expo-location';
 import BottomBar from '@/components/BottomBar';
 import { writeBatch, Timestamp } from 'firebase/firestore';
 
-const INITIAL_REGION = {
+const INITIAL_REGION = { //Region of initial focus for the map
   latitude: 30.6210,
   longitude: -96.3255,
   latitudeDelta: 2,
@@ -45,22 +45,13 @@ export default function App() {
             eventTrigger: isTriggered,
           });
 
-          // Check and reset eventTrigger if needed
           if (isTriggered && data.lastUpdated) {
-            const docRef = doc(db, 'bluStickDevices', docSnap.id);
-            await updateDoc(docRef, { eventTrigger: false });
-
-            const lastUpdated = data.lastUpdated.toDate();
-            console.log('Last updated:', lastUpdated);
-            // const fiveMinsAgo = new Date(lastUpdated.getTime() - 5 * 60 * 1000);
-
-             //  Red Circle: track in highlightedMarkers for 1 minute
+            // ✅ All apps: Visual indicators
             setHighlightedMarkers(prev => [
               ...prev,
               { id: docSnap.id, expiresAt: Date.now() + 60_000 }
             ]);
-
-            // Black Pin: track for 2 minutes (It's called blackpins but this code is pertaining to the event markers)
+          
             setBlackPins(prev => [
               ...prev,
               {
@@ -70,8 +61,18 @@ export default function App() {
                 expiresAt: Date.now() + 120_000
               }
             ]);
-            
-            if(data.bluStickId === DEVICE_BLU_STICK_ID) {
+          
+            // 🔒 Only this app handles event reset & database querying
+            if (data.bluStickId === DEVICE_BLU_STICK_ID) {
+              const docRef = doc(db, 'bluStickDevices', docSnap.id);
+
+              setTimeout(async () => {
+                await updateDoc(docRef, { eventTrigger: false });
+              }, 4500); // Wait 4.5 seconds
+              
+          
+              const lastUpdated = data.lastUpdated.toDate();
+          
               const collectDocsFrom = async (
                 source: 'ble' | 'wifi',
                 bluStickId: number,
@@ -79,20 +80,17 @@ export default function App() {
               ) => {
                 const lastUpdatedDate = lastUpdated.toDate();
                 const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
-                
+          
                 const sourceQuery = query(
                   collection(db, source),
                   where('bluStickId', '==', bluStickId),
                   where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
                   where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
                 );
-
-                // console.log(`Querying ${source} for bluStickId ${bluStickId} between ${fiveMinsAgo} and ${lastUpdated}`);
-              
+          
                 const sourceSnap = await getDocs(sourceQuery);
-
                 const uniqueDocsMap = new Map<string, any>();
-              
+          
                 sourceSnap.forEach(doc => {
                   const data = doc.data();
                   const mac = data.macAddress;
@@ -100,22 +98,17 @@ export default function App() {
                     uniqueDocsMap.set(mac, {
                       ...data,
                       wasDetected: false,
-                      // parentBluStickId: bluStickId,
-                      // triggeredAt: lastUpdated,
+                      matchbluStickId: null
                     });
                   }
                 });
-              
+          
                 return Array.from(uniqueDocsMap.values());
               };
-              
-              
-              // inside for-loop for each triggered bluStick:
+          
               const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
               const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
-              
-              
-              // Batch write BLE docs to "beat"
+          
               if (bleDocs.length > 0) {
                 const batch = writeBatch(db);
                 bleDocs.forEach(docData => {
@@ -124,8 +117,7 @@ export default function App() {
                 });
                 await batch.commit();
               }
-              
-              // Batch write WiFi docs to "weat"
+          
               if (wifiDocs.length > 0) {
                 const batch = writeBatch(db);
                 wifiDocs.forEach(docData => {
@@ -136,6 +128,7 @@ export default function App() {
               }
             }
           }
+          
         }
       }
         // Clear expired visual effects
@@ -214,7 +207,7 @@ export default function App() {
 
               <Circle
                 center={{ latitude: marker.latitude, longitude: marker.longitude }}
-                radius={500}
+                radius={250}
                 strokeColor={isHighlighted || selectedMarker === index ? "red" : "rgba(250, 251, 252, 0.7)"}
                 fillColor={isHighlighted || selectedMarker === index ? "rgba(255, 0, 0, 0.3)" : "rgba(248, 249, 250, 0.3)"}
                 strokeWidth={2}
@@ -249,10 +242,10 @@ export default function App() {
 const styles = StyleSheet.create({
   bottomBarContainer: {
     position: 'absolute',
-    bottom: -32,
+    bottom: 0,
     left: 0,
     right: 0,
-    maxHeight: '40%', // Adjust as needed if content is tall
+    maxHeight: '40%',
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
