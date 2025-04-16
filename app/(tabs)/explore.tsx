@@ -21,6 +21,21 @@ export default function App() {
   const [selectedMarker, setSelectedMarker] = useState<number | null>(null);
   const [highlightedMarkers, setHighlightedMarkers] = useState<any[]>([]);
   const [blackPins, setBlackPins] = useState<any[]>([]);
+  const [suspectPins, setSuspectPins] = useState<any[]>([]);
+
+    // Generate a random coordinate nearby within ~25 meters
+  const getRandomNearbyLocation = (lat: number, lon: number): { latitude: number; longitude: number } => {
+    const radiusInMeters = 25;
+    const radiusInDegrees = radiusInMeters / 111320; // approx conversion
+
+    const randomLat = lat + (Math.random() - 0.5) * radiusInDegrees;
+    const randomLon = lon + (Math.random() - 0.5) * radiusInDegrees;
+
+    return {
+      latitude: randomLat,
+      longitude: randomLon,
+    };
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -71,72 +86,109 @@ export default function App() {
               }, 4500); // Wait 4.5 seconds
               
           
-              const lastUpdated = data.lastUpdated.toDate();
+              // const lastUpdated = data.lastUpdated.toDate();
           
-              const collectDocsFrom = async (
-                source: 'ble' | 'wifi',
-                bluStickId: number,
-                lastUpdated: Timestamp
-              ) => {
-                const lastUpdatedDate = lastUpdated.toDate();
-                const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
+              // const collectDocsFrom = async (
+              //   source: 'ble' | 'wifi',
+              //   bluStickId: number,
+              //   lastUpdated: Timestamp
+              // ) => {
+              //   const lastUpdatedDate = lastUpdated.toDate();
+              //   const fiveMinsAgo = new Date(lastUpdatedDate.getTime() - 3 * 60 * 1000);
           
-                const sourceQuery = query(
-                  collection(db, source),
-                  where('bluStickId', '==', bluStickId),
-                  where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
-                  where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
-                );
+              //   const sourceQuery = query(
+              //     collection(db, source),
+              //     where('bluStickId', '==', bluStickId),
+              //     where('timestamp', '>=', Timestamp.fromDate(fiveMinsAgo)),
+              //     where('timestamp', '<=', Timestamp.fromDate(lastUpdatedDate))
+              //   );
           
-                const sourceSnap = await getDocs(sourceQuery);
-                const uniqueDocsMap = new Map<string, any>();
+              //   const sourceSnap = await getDocs(sourceQuery);
+              //   const uniqueDocsMap = new Map<string, any>();
           
-                sourceSnap.forEach(doc => {
-                  const data = doc.data();
-                  const mac = data.macAddress;
-                  if (!uniqueDocsMap.has(mac)) {
-                    uniqueDocsMap.set(mac, {
-                      ...data,
-                      wasDetected: false,
-                      matchbluStickId: null
-                    });
-                  }
-                });
+              //   sourceSnap.forEach(doc => {
+              //     const data = doc.data();
+              //     const mac = data.macAddress;
+              //     if (!uniqueDocsMap.has(mac)) {
+              //       uniqueDocsMap.set(mac, {
+              //         ...data,
+              //         wasDetected: false,
+              //       });
+              //     }
+              //   });
           
-                return Array.from(uniqueDocsMap.values());
-              };
+              //   return Array.from(uniqueDocsMap.values());
+              // };
           
-              const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
-              const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
+              // const bleDocs = await collectDocsFrom('ble', data.bluStickId, data.lastUpdated);
+              // const wifiDocs = await collectDocsFrom('wifi', data.bluStickId, data.lastUpdated);
           
-              if (bleDocs.length > 0) {
-                const batch = writeBatch(db);
-                bleDocs.forEach(docData => {
-                  const newRef = doc(collection(db, 'beat'));
-                  batch.set(newRef, docData);
-                });
-                await batch.commit();
-              }
+              // if (bleDocs.length > 0) {
+              //   const batch = writeBatch(db);
+              //   bleDocs.forEach(docData => {
+              //     const newRef = doc(collection(db, 'beat'));
+              //     batch.set(newRef, docData);
+              //   });
+              //   await batch.commit();
+              // }
           
-              if (wifiDocs.length > 0) {
-                const batch = writeBatch(db);
-                wifiDocs.forEach(docData => {
-                  const newRef = doc(collection(db, 'weat'));
-                  batch.set(newRef, docData);
-                });
-                await batch.commit();
-              }
+              // if (wifiDocs.length > 0) {
+              //   const batch = writeBatch(db);
+              //   wifiDocs.forEach(docData => {
+              //     const newRef = doc(collection(db, 'weat'));
+              //     batch.set(newRef, docData);
+              //   });
+              //   await batch.commit();
+              // }
             }
-          }
-          
+          }  
         }
       }
-        // Clear expired visual effects
+      // Clear expired visual effects
       const now = Date.now();
       setHighlightedMarkers(prev => prev.filter(m => m.expiresAt > now));
       setBlackPins(prev => prev.filter(p => p.expiresAt > now));
 
       setLiveMarkers(newMarkers);
+      // Query beat and weat for suspect detection
+      const handleDetectionQuery = async (collectionName: 'beat' | 'weat') => {
+        const snap = await getDocs(collection(db, collectionName));
+
+        for (const docSnap of snap.docs) {
+          const data = docSnap.data();
+          if (data.isDetected && (data.originalBluStickId !== data.detectedBluStickId)) {
+            const detectedId = data.detectedBluStickId;
+
+            const matchingMarker = newMarkers.find(m => m.bluStickId === detectedId);
+            if (matchingMarker) {
+              const nearby = getRandomNearbyLocation(matchingMarker.latitude, matchingMarker.longitude);
+              console.log(detectedId);
+              setSuspectPins(prev => [
+                ...prev,
+                {
+                  id: `${collectionName}-${docSnap.id}-${Date.now()}`,
+                  latitude: nearby.latitude,
+                  longitude: nearby.longitude,
+                  expiresAt: Date.now() + 90_000 // show for 90 seconds
+                }
+              ]);
+
+              // Reset isDetected after 5 seconds
+              const ref = doc(db, collectionName, docSnap.id);
+              setTimeout(async () => {
+                await updateDoc(ref, { isDetected: false });
+              }, 4500);
+            }
+          }
+        }
+      };
+
+      await Promise.all([handleDetectionQuery('beat'), handleDetectionQuery('weat')]);
+
+      // Clean up expired suspect pins
+      // const now = Date.now();
+      setSuspectPins(prev => prev.filter(p => p.expiresAt > now));
+
     };
 
     const updateOwnLocation = async () => {
@@ -230,6 +282,19 @@ export default function App() {
           />
         </Marker>
         ))}
+        
+        {suspectPins.map(pin => (
+          <Marker
+            key={pin.id}
+            coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+          >
+            <Image
+              source={require('@/assets/images/suspectLogo.png')}
+              style={{ width: 35, height: 35 }}
+            />
+          </Marker>
+        ))}
+
       </MapView>
 
       <View style={styles.bottomBarContainer}>
