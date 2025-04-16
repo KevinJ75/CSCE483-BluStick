@@ -290,8 +290,8 @@ const styles = StyleSheet.create({
   },
   centerButton: {
     position: 'absolute',
-    bottom: 80,
-    right: 20,
+    bottom: 830,
+    right: 30,
     backgroundColor: '#007AFF',
     paddingVertical: 10,
     paddingHorizontal: 16,
