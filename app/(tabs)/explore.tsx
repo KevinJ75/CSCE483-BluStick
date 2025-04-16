@@ -1,18 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MapView, { Callout, Marker, Circle } from 'react-native-maps';
-import { StyleSheet, View, Text, Image } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { collection, getDocs, query, updateDoc, doc, getDoc, setDoc, where } from 'firebase/firestore';
 import { db } from '@/FirebaseConfig';
 import * as Location from 'expo-location';
 import BottomBar from '@/components/BottomBar';
+import type { Region } from 'react-native-maps';
 import { writeBatch, Timestamp } from 'firebase/firestore';
-
-const INITIAL_REGION = { //Region of initial focus for the map
-  latitude: 30.6210,
-  longitude: -96.3255,
-  latitudeDelta: 2,
-  longitudeDelta: 2,
-};
 
 const DEVICE_BLU_STICK_ID = 100;
 
@@ -22,6 +16,8 @@ export default function App() {
   const [highlightedMarkers, setHighlightedMarkers] = useState<any[]>([]);
   const [blackPins, setBlackPins] = useState<any[]>([]);
   const [suspectPins, setSuspectPins] = useState<any[]>([]);
+  const [initialRegion, setInitialRegion] = useState<Region | null>(null);
+  const mapRef = useRef<MapView | null>(null);
 
     // Generate a random coordinate nearby within ~25 meters
   const getRandomNearbyLocation = (lat: number, lon: number): { latitude: number; longitude: number } => {
@@ -201,6 +197,13 @@ export default function App() {
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
 
+      setInitialRegion(prev => prev ?? {
+        latitude: latitude,
+        longitude: longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+
       const q = query(collection(db, 'bluStickDevices'));
       const snapshot = await getDocs(q);
 
@@ -231,11 +234,33 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const centerMapOnUser = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      console.warn('Location permission not granted');
+      return;
+    }
+
+    const location = await Location.getCurrentPositionAsync({});
+    const { latitude, longitude } = location.coords;
+
+    const region: Region = {
+      latitude,
+      longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+
+    mapRef.current?.animateToRegion(region, 1000); // 1000 ms animation
+  };
+
   return (
     <View style={{ flex: 1 }}>
+      {initialRegion && (
       <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFill}
-        initialRegion={INITIAL_REGION}
+        initialRegion={initialRegion}
         mapType="hybrid"
       >
         {liveMarkers.map((marker, index) => {
@@ -296,7 +321,10 @@ export default function App() {
         ))}
 
       </MapView>
-
+      )}
+      <TouchableOpacity style={styles.centerButton} onPress={centerMapOnUser}>
+        <Text style={styles.centerButtonText}>Center Map</Text>
+      </TouchableOpacity>
       <View style={styles.bottomBarContainer}>
         <BottomBar />
       </View>
@@ -314,4 +342,19 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
+  centerButton: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    elevation: 4,
+    zIndex: 100,
+  },
+  centerButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  }
 });
