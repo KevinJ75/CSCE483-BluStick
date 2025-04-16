@@ -2,16 +2,14 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
 } from 'react-native';
+import { collection, getDocs, query, updateDoc, doc, getDoc, setDoc, where, orderBy, limit, startAfter } from 'firebase/firestore';
+import { db } from '@/FirebaseConfig';
 import BottomBar from '@/components/BottomBar';
-import { collection, getDocs, getFirestore, query, where, orderBy, limit, startAfter, getDoc } from 'firebase/firestore';
-import { db } from '../../FirebaseConfig';
 import styles from '@/app/StyleSheets/StyleSheet4';
-
 
 const PAGE_SIZE = 20;
 
@@ -20,22 +18,24 @@ const EventLogsScreen: React.FC = () => {
   const [eventIds, setEventIds] = useState<string[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
-  const [lastDoc, setLastDoc] = useState<any | null>(null);
-  const [hasMore, setHasMore] = useState(true);
+  const [lastBeatDoc, setLastBeatDoc] = useState<any | null>(null);
+  const [lastWeatDoc, setLastWeatDoc] = useState<any | null>(null);
+  const [hasMoreBeat, setHasMoreBeat] = useState(true);
+  const [hasMoreWeat, setHasMoreWeat] = useState(true);
 
   useEffect(() => {
     const fetchEventIds = async () => {
       setLoading(true);
       try {
-        const q = query(collection(db, 'eventIdTest'), orderBy('eventId', 'asc'));
+        const q = query(collection(db, 'events'),
+        orderBy('startTimestamp', 'desc'));
         const snapshot = await getDocs(q);
-    
+        
         const idsSet = new Set<string>();
         snapshot.forEach((doc) => {
           const data = doc.data();
           if (data.eventId) idsSet.add(data.eventId);
         });
-    
         setEventIds(Array.from(idsSet));
       } catch (error) {
         console.error('Error fetching event IDs:', error);
@@ -43,63 +43,77 @@ const EventLogsScreen: React.FC = () => {
         setLoading(false);
       }
     };
-    
-    
 
     fetchEventIds();
   }, []);
 
   const fetchLogsByEventId = async (eventId: string, reset = false) => {
-    if (loading || (!reset && !hasMore)) return;
+    if (loading || (!reset && !hasMoreBeat && !hasMoreWeat)) return;
     setLoading(true);
-  
+
     try {
-      let q = query(
-        collection(db, 'signals'),
+        let beatQuery = query(collection(db, 'beat'),
         where('eventId', '==', eventId),
-        orderBy('time', 'desc'),
-        limit(PAGE_SIZE)
+        orderBy('detectedTimestamp', 'desc'),
+        limit(PAGE_SIZE));
+        
+        
+        let weatQuery = query(collection(db, 'weat'),
+        where('eventId', '==', eventId),
+        orderBy('detectedTimestamp', 'desc'),
+        limit(PAGE_SIZE));
+
+      if (lastBeatDoc && !reset) {
+        beatQuery = query(beatQuery, startAfter(lastBeatDoc));      }
+
+      if (lastWeatDoc && !reset) {
+        weatQuery = query(weatQuery, startAfter(lastWeatDoc));      }
+
+      
+
+        const [beatSnap, weatSnap] = await Promise.all([
+          getDocs(beatQuery),
+          getDocs(weatQuery),
+        ]);
+
+      const beatLogs = beatSnap.docs.map(doc => ({
+        id: doc.id,
+        type: 'beat',
+        device: doc.data().detectedBluStickId,
+        address: doc.data().macAddress,
+        time: doc.data().detectedTimestamp?.toDate().toLocaleString(),
+      }));
+
+      const weatLogs = weatSnap.docs.map(doc => ({
+        id: doc.id,
+        type: 'weat',
+        device: doc.data().detectedBluStickId,
+        address: doc.data().macAddress,
+        time: doc.data().detectedTimestamp?.toDate().toLocaleString(),
+      }));
+
+      const combinedLogs = [...logs, ...beatLogs, ...weatLogs].sort(
+        (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
       );
-  
-      if (lastDoc && !reset) {
-        q = query(
-          collection(db, 'signals'),
-          where('eventId', '==', eventId),
-          orderBy('time', 'desc'),
-          startAfter(lastDoc),
-          limit(PAGE_SIZE)
-        );
-      }
-  
-      const querySnapshot = await getDocs(q);
-      const newLogs: any[] = [];
-  
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        newLogs.push({
-          id: doc.id,
-          device: data.DeviceId,
-          address: data.Address,
-          signalStrength: data.signalStrength,
-          time: data.time?.toDate().toLocaleString(),
-        });
-      });
-  
-      setLogs(reset ? newLogs : [...logs, ...newLogs]);
-      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasMore(querySnapshot.docs.length === PAGE_SIZE);
+
+      setLogs(reset ? [...beatLogs, ...weatLogs].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) : combinedLogs);
+      setLastBeatDoc(beatSnap.docs[beatSnap.docs.length - 1] || lastBeatDoc);
+      setLastWeatDoc(weatSnap.docs[weatSnap.docs.length - 1] || lastWeatDoc);
+      setHasMoreBeat(beatSnap.docs.length === PAGE_SIZE);
+      setHasMoreWeat(weatSnap.docs.length === PAGE_SIZE);
     } catch (error) {
       console.error('Pagination error:', error);
     } finally {
       setLoading(false);
     }
   };
-  
 
   const onSelectEventId = (eventId: string) => {
     setSelectedEventId(eventId);
-    setLastDoc(null);
-    setHasMore(true);
+    setLastBeatDoc(null);
+    setLastWeatDoc(null);
+    setHasMoreBeat(true);
+    setHasMoreWeat(true);
     setLogs([]);
     fetchLogsByEventId(eventId, true);
   };
@@ -125,21 +139,21 @@ const EventLogsScreen: React.FC = () => {
 
           <FlatList
             data={logs}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => `${item.type}-${item.id}`}
             renderItem={({ item }) => (
               <View style={styles.logCard}>
+                <Text style={styles.logText}>Source: {item.type}</Text>
                 <Text style={styles.logText}>Device ID: {item.device}</Text>
                 <Text style={styles.logText}>Address: {item.address}</Text>
-                <Text style={styles.logText}>Signal Strength: {item.signalStrength}</Text>
                 <Text style={styles.logText}>Time: {item.time}</Text>
               </View>
             )}
-            onEndReached={() => fetchLogsByEventId(selectedEventId)}
+            onEndReached={() => fetchLogsByEventId(selectedEventId!)}
             onEndReachedThreshold={0.5}
             ListFooterComponent={
               loading ? (
                 <ActivityIndicator size="small" />
-              ) : !hasMore ? (
+              ) : (!hasMoreBeat && !hasMoreWeat) ? (
                 <Text style={styles.endText}>No more logs</Text>
               ) : null
             }
