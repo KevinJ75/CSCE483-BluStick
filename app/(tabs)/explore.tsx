@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 import BottomBar from '@/components/BottomBar';
 import type { Region } from 'react-native-maps';
 import { writeBatch, Timestamp } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 
 const DEVICE_BLU_STICK_ID = 300;
 
@@ -268,7 +269,7 @@ export default function App() {
       </MapView>
       )}
       <TouchableOpacity style={styles.centerButton} onPress={centerMapOnUser}>
-        <Text style={styles.centerButtonText}>Center Map</Text>
+        <Ionicons name="locate" size={28} color="#fff" />
       </TouchableOpacity>
       <View style={styles.bottomBarContainer}>
         <BottomBar />
@@ -298,8 +299,4 @@ const styles = StyleSheet.create({
     elevation: 4,
     zIndex: 100,
   },
-  centerButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  }
 });
