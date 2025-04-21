@@ -3,146 +3,166 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import MultiSelect from 'react-native-multiple-select';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
-import { findCommonAddresses } from '../../services/firestore'; // Updated import
+import { findCommonAddresses, CommonAddress } from '../../services/firestore';
+import BottomBar from '@/components/BottomBar';
+
+interface EventOption { id: string; name: string; }
 
 const DetectionLogsScreen: React.FC = () => {
-  const [duplicates, setDuplicates] = useState<
-    { mac_address: string; occurrences: any[] }[]
-  >([]);
-  const [eventOptions, setEventOptions] = useState<{ id: string; name: string }[]>([]);
+  const [commonAddrs, setCommonAddrs] = useState<CommonAddress[]>([]);
+  const [eventOptions, setEventOptions] = useState<EventOption[]>([]);
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
 
-  // Load event options on mount
+  // Load events
   useEffect(() => {
-    const fetchEvents = async () => {
-      const snapshot = await getDocs(collection(db, 'events'));
-      const events = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: data.eventID, // Use eventID instead of Firestore document ID
-          name: `EventID: ${data.eventID || 'Unknown'} Device ID: (${data.sensorID}) Time: ${data.timestamp}`,
-        };
-      });
+    (async () => {
+      const snap = await getDocs(collection(db, 'events'));
+  
+      const events = snap.docs
+        .map(docSnap => {
+          const d = docSnap.data();
+          const time = d.startTimestamp?.toDate();
+          return {
+            id: d.eventId,
+            name: `Event ${d.eventId} @ ${time?.toLocaleString() ?? 'Unknown'}`,
+            timestamp: time?.getTime() ?? 0 // used for sorting
+          };
+        })
+        .sort((a, b) => b.timestamp - a.timestamp); // sort newest first
+  
       setEventOptions(events);
-    };
-  
-    fetchEvents();
+    })();
   }, []);
-
-  // Fetch duplicates for selected eventIDs
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await findCommonAddresses(selectedEvents);
-      setDuplicates(result);
-    };
   
-    if (selectedEvents.length > 0) {
-      fetchData();
-    } else {
-      setDuplicates([]);
+  
+
+  // Fetch common addresses when selection changes
+  useEffect(() => {
+    if (!selectedEvents.length) {
+      setCommonAddrs([]);
+      return;
     }
+    (async () => {
+      setCommonAddrs(await findCommonAddresses(selectedEvents));
+    })();
   }, [selectedEvents]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Duplicate MAC Addresses</Text>
+      <Text style={styles.title}>Common MAC Addresses</Text>
 
       <MultiSelect
         items={eventOptions}
         uniqueKey="id"
         onSelectedItemsChange={setSelectedEvents}
         selectedItems={selectedEvents}
-        selectText="Filter by Event"
+        selectText="Select Events..."
         searchInputPlaceholderText="Search Events..."
-        tagRemoveIconColor="#CCC"
-        tagBorderColor="#CCC"
-        tagTextColor="#000"
-        selectedItemTextColor="#000"
-        selectedItemIconColor="#000"
-        itemTextColor="#000"
         displayKey="name"
-        searchInputStyle={{ color: '#000' }}
-        submitButtonColor="#48d22b"
         submitButtonText="Apply"
         styleMainWrapper={styles.multiSelect}
       />
 
-      <ScrollView horizontal style={styles.tableContainer}>
-        <View style={styles.table}>
-          {/* Table Header */}
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCell, styles.tableHeader]}>MAC Address</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Sensor ID</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Signal</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Signal Type</Text>
-            <Text style={[styles.tableCell, styles.tableHeader]}>Timestamp</Text>
-          </View>
+<View style={styles.tableWrapper}>
+        <ScrollView horizontal contentContainerStyle={{ flexGrow: 1 }}>
+          <ScrollView nestedScrollEnabled contentContainerStyle={{ flexGrow: 1 }}>
+            <View style={styles.table}>
+              {/* Header */}
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCell, styles.headerCell, styles.cellMac]}>MAC</Text>
+                <Text style={[styles.tableCell, styles.headerCell, styles.cellSource]}>Source</Text>
+                <Text style={[styles.tableCell, styles.headerCell, styles.cellDetectedBy]}>Detected By</Text>
+                <Text style={[styles.tableCell, styles.headerCell, styles.cellEventId]}>Event ID</Text>
+                <Text style={[styles.tableCell, styles.headerCell, styles.cellTimestamp]}>Detected At</Text>
+                <Text style={[styles.tableCell, styles.headerCell, styles.cellOriginal]}>Original By</Text>
+                <Text style={[styles.tableCell, styles.headerCell, styles.cellTimestamp]}>Original At</Text>
+              </View>
 
-          {/* Table Rows */}
-          {duplicates.length > 0 ? (
-            duplicates.map((entry) =>
-              entry.occurrences.map((doc, index) => (
-                <View key={`${entry.mac_address}-${index}`} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.tableEntry]}>{entry.mac_address}</Text>
-                  <Text style={[styles.tableCell, styles.tableEntry]}>{doc.sensorID}</Text>
-                  <Text style={[styles.tableCell, styles.tableEntry]}>{doc.signal}</Text>
-                  <Text style={[styles.tableCell, styles.tableEntry]}>{doc.signal_type}</Text>
-                  <Text style={[styles.tableCell, styles.tableEntry]}>
-                    {doc.timestamp?.toDate ? doc.timestamp.toDate().toLocaleString() : doc.timestamp}
-                  </Text>
+              {/* Rows */}
+              {commonAddrs.length ? (
+                commonAddrs.map(entry =>
+                  entry.occurrences.map((doc, i) => (
+                    <View key={`${entry.macAddress}-${i}`} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, styles.cellMac]}>{entry.macAddress}</Text>
+                      <Text style={[styles.tableCell, styles.cellSource]}>{doc.source}</Text>
+                      <Text style={[styles.tableCell, styles.cellDetectedBy]}>{doc.detectedBluStickId}</Text>
+                      <Text style={[styles.tableCell, styles.cellEventId]}>{doc.eventId}</Text>
+                      <Text style={[styles.tableCell, styles.cellTimestamp]}>
+                        {doc.detectedTimestamp?.toDate().toLocaleString() ?? '—'}
+                      </Text>
+                      <Text style={[styles.tableCell, styles.cellOriginal]}>{doc.originalBluStickId}</Text>
+                      <Text style={[styles.tableCell, styles.cellTimestamp]}>
+                        {doc.originalTimestamp?.toDate().toLocaleString() ?? '—'}
+                      </Text>
+                    </View>
+                  ))
+                )
+              ) : (
+                <View style={styles.tableRow}>
+                  <Text style={styles.tableCell}>No common addresses found.</Text>
                 </View>
-              ))
-            )
-          ) : (
-            <View style={styles.tableRow}>
-              <Text style={styles.tableCell}>No duplicate MAC addresses found.</Text>
+              )}
             </View>
-          )}
-        </View>
-      </ScrollView>
+          </ScrollView>
+        </ScrollView>
+      </View>
+
+      {/* BottomBar */}
+      <View style={styles.bottomBarContainer}>
+        <BottomBar />
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, padding: 12, alignItems: 'center' },
+  title: { fontSize: 20, marginBottom: 8 },
+  multiSelect: { width: '100%' },
+
+  // Wraps both scrollviews and gives vertical space
+  tableWrapper: {
     flex: 1,
-    padding: 16,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    marginBottom: 12,
-  },
-  tableContainer: {
     width: '100%',
-    marginTop: 16,
+    marginTop: 12,
   },
+
   table: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#fff',
   },
   tableRow: {
     flexDirection: 'row',
   },
+
+  // Base cell style, smaller padding & font
   tableCell: {
-    flex: 1,
-    padding: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#fff',
     textAlign: 'center',
-    color: '#000',
-  },
-  tableHeader: {
-    fontWeight: 'bold',
-    backgroundColor: '#f0f0f0',
-  },
-  tableEntry: {
+    fontSize: 12,
     color: '#fff',
   },
-  multiSelect: {
-    width: '100%',
+  headerCell: {
+    backgroundColor: '#000',
+    fontWeight: 'bold',
+  },
+
+  // New, tighter minWidths and flex ratios
+  cellMac:        { flex: 2, minWidth: 90  },
+  cellSource:     { flex: 1, minWidth: 60  },
+  cellDetectedBy: { flex: 1, minWidth: 60  },
+  cellEventId:    { flex: 2, minWidth: 120 },
+  cellTimestamp:  { flex: 2, minWidth: 120 },
+  cellOriginal:   { flex: 1, minWidth: 60  },
+
+  bottomBarContainer: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
   },
 });
 
