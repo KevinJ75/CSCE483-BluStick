@@ -7,6 +7,8 @@ import * as Location from 'expo-location';
 import BottomBar from '@/components/BottomBar';
 import type { Region } from 'react-native-maps';
 import { writeBatch, Timestamp } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+
 
 const DEVICE_BLU_STICK_ID = 100;
 
@@ -17,6 +19,14 @@ export default function App() {
   const [blackPins, setBlackPins] = useState<any[]>([]);
   const [suspectPins, setSuspectPins] = useState<any[]>([]);
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
+  const [selectedSuspectInfo, setSelectedSuspectInfo] = useState<null | {
+    id: string;
+    latitude: number;
+    longitude: number;
+    macAddress: string;
+    manufacturer: string;
+  }> (null);
+  
   const mapRef = useRef<MapView | null>(null);
 
     // Generate a random coordinate nearby within ~25 meters
@@ -72,7 +82,7 @@ export default function App() {
                 expiresAt: Date.now() + 120_000
               }
             ]);
-          
+            // console.log("hi");
             // 🔒 Only this app handles event reset & database querying
             if (data.bluStickId === DEVICE_BLU_STICK_ID) {
               const docRef = doc(db, 'bluStickDevices', docSnap.id);
@@ -135,7 +145,7 @@ export default function App() {
               //     batch.set(newRef, docData);
               //   });
               //   await batch.commit();
-              // }
+              // } //comment to here
             }
           }  
         }
@@ -165,15 +175,18 @@ export default function App() {
                   id: `${collectionName}-${docSnap.id}-${Date.now()}`,
                   latitude: nearby.latitude,
                   longitude: nearby.longitude,
+                  macAddress: data.macAddress ?? 'Unknown', // add this
+                  manufacturer: data.manufacturer ?? 'Unknown', // add this
                   expiresAt: Date.now() + 90_000 // show for 90 seconds
                 }
               ]);
+              
 
               // Reset isDetected after 5 seconds
               const ref = doc(db, collectionName, docSnap.id);
               setTimeout(async () => {
                 await updateDoc(ref, { isDetected: false });
-              }, 4500);
+              }, 4000);
             }
           }
         }
@@ -309,21 +322,47 @@ export default function App() {
         ))}
         
         {suspectPins.map(pin => (
-          <Marker
-            key={pin.id}
-            coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
-          >
-            <Image
-              source={require('@/assets/images/suspectLogo.png')}
-              style={{ width: 35, height: 35 }}
-            />
-          </Marker>
-        ))}
+            <Marker
+              key={pin.id}
+              coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+              onPress={() => setSelectedSuspectInfo(pin)}
+            >
+              <Image
+                source={require('@/assets/images/suspectLogo.png')}
+                style={{ width: 35, height: 35 }}
+              />
+            </Marker>
+          ))}
+
+          {selectedSuspectInfo && (
+            <View style={{
+              position: 'absolute',
+              bottom: 40,
+              left: 20,
+              right: 20,
+              backgroundColor: '#fff',
+              padding: 16,
+              borderRadius: 12,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5
+            }}>
+              <Text style={{ fontWeight: 'bold', marginBottom: 6 }}>Suspect Info</Text>
+              <Text>MAC Address: {selectedSuspectInfo.macAddress}</Text>
+              <Text>Manufacturer: {selectedSuspectInfo.manufacturer}</Text>
+              <TouchableOpacity onPress={() => setSelectedSuspectInfo(null)} style={{ marginTop: 10 }}>
+                <Text style={{ color: 'blue' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
 
       </MapView>
       )}
       <TouchableOpacity style={styles.centerButton} onPress={centerMapOnUser}>
-        <Text style={styles.centerButtonText}>Center Map</Text>
+        <Ionicons name="locate" size={28} color="#fff" />
       </TouchableOpacity>
       <View style={styles.bottomBarContainer}>
         <BottomBar />
@@ -335,17 +374,17 @@ export default function App() {
 const styles = StyleSheet.create({
   bottomBarContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -32,
     left: 0,
     right: 0,
-    maxHeight: '40%',
+    maxHeight: '40%', // Adjust as needed if content is tall
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   centerButton: {
     position: 'absolute',
-    bottom: 80,
-    right: 20,
+    bottom: 750,
+    right: 30,
     backgroundColor: '#007AFF',
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -353,8 +392,4 @@ const styles = StyleSheet.create({
     elevation: 4,
     zIndex: 100,
   },
-  centerButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  }
 });
