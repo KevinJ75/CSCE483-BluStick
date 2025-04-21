@@ -2,14 +2,13 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import BottomBar from '@/components/BottomBar';
-import styles from '@/app/Stylesheets/StyleSheet4'
+import styles from '@/app/Stylesheets/StyleSheet4';
 
 const PAGE_SIZE = 20;
 
@@ -18,16 +17,18 @@ const EventLogsScreen: React.FC = () => {
   const [eventIds, setEventIds] = useState<string[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
-  const [lastDoc, setLastDoc] = useState<any | null>(null);
-  const [hasMore, setHasMore] = useState(true);
+  const [lastBeatDoc, setLastBeatDoc] = useState<any | null>(null);
+  const [lastWeatDoc, setLastWeatDoc] = useState<any | null>(null);
+  const [hasMoreBeat, setHasMoreBeat] = useState(true);
+  const [hasMoreWeat, setHasMoreWeat] = useState(true);
 
   useEffect(() => {
     const fetchEventIds = async () => {
       setLoading(true);
       try {
         const snapshot = await firestore()
-          .collection('eventIdTest')
-          .orderBy('eventId', 'asc')
+          .collection('events')
+          .orderBy('startTimestamp', 'desc')
           .get();
 
         const idsSet = new Set<string>();
@@ -47,37 +48,57 @@ const EventLogsScreen: React.FC = () => {
   }, []);
 
   const fetchLogsByEventId = async (eventId: string, reset = false) => {
-    if (loading || (!reset && !hasMore)) return;
+    if (loading || (!reset && !hasMoreBeat && !hasMoreWeat)) return;
     setLoading(true);
 
     try {
-      let query = firestore()
-        .collection('signals')
+      let beatQuery = firestore()
+        .collection('beat')
         .where('eventId', '==', eventId)
-        .orderBy('time', 'desc')
+        .orderBy('detectedTimestamp', 'desc')
         .limit(PAGE_SIZE);
 
-      if (lastDoc && !reset) {
-        query = query.startAfter(lastDoc);
+      let weatQuery = firestore()
+        .collection('weat')
+        .where('eventId', '==', eventId)
+        .orderBy('detectedTimestamp', 'desc')
+        .limit(PAGE_SIZE);
+
+      if (lastBeatDoc && !reset) {
+        beatQuery = beatQuery.startAfter(lastBeatDoc);
       }
 
-      const querySnapshot = await query.get();
-      const newLogs: any[] = [];
+      if (lastWeatDoc && !reset) {
+        weatQuery = weatQuery.startAfter(lastWeatDoc);
+      }
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        newLogs.push({
-          id: doc.id,
-          device: data.DeviceId,
-          address: data.Address,
-          signalStrength: data.signalStrength,
-          time: data.time?.toDate().toLocaleString(),
-        });
-      });
+      const [beatSnap, weatSnap] = await Promise.all([beatQuery.get(), weatQuery.get()]);
 
-      setLogs(reset ? newLogs : [...logs, ...newLogs]);
-      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasMore(querySnapshot.docs.length === PAGE_SIZE);
+      const beatLogs = beatSnap.docs.map(doc => ({
+        id: doc.id,
+        type: 'beat',
+        device: doc.data().detectedBluStickId,
+        address: doc.data().macAddress,
+        time: doc.data().detectedTimestamp?.toDate().toLocaleString(),
+      }));
+
+      const weatLogs = weatSnap.docs.map(doc => ({
+        id: doc.id,
+        type: 'weat',
+        device: doc.data().detectedBluStickId,
+        address: doc.data().macAddress,
+        time: doc.data().detectedTimestamp?.toDate().toLocaleString(),
+      }));
+
+      const combinedLogs = [...logs, ...beatLogs, ...weatLogs].sort(
+        (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+      );
+
+      setLogs(reset ? [...beatLogs, ...weatLogs].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) : combinedLogs);
+      setLastBeatDoc(beatSnap.docs[beatSnap.docs.length - 1] || lastBeatDoc);
+      setLastWeatDoc(weatSnap.docs[weatSnap.docs.length - 1] || lastWeatDoc);
+      setHasMoreBeat(beatSnap.docs.length === PAGE_SIZE);
+      setHasMoreWeat(weatSnap.docs.length === PAGE_SIZE);
     } catch (error) {
       console.error('Pagination error:', error);
     } finally {
@@ -87,8 +108,10 @@ const EventLogsScreen: React.FC = () => {
 
   const onSelectEventId = (eventId: string) => {
     setSelectedEventId(eventId);
-    setLastDoc(null);
-    setHasMore(true);
+    setLastBeatDoc(null);
+    setLastWeatDoc(null);
+    setHasMoreBeat(true);
+    setHasMoreWeat(true);
     setLogs([]);
     fetchLogsByEventId(eventId, true);
   };
@@ -114,21 +137,21 @@ const EventLogsScreen: React.FC = () => {
 
           <FlatList
             data={logs}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => `${item.type}-${item.id}`}
             renderItem={({ item }) => (
               <View style={styles.logCard}>
+                <Text style={styles.logText}>Source: {item.type}</Text>
                 <Text style={styles.logText}>Device ID: {item.device}</Text>
                 <Text style={styles.logText}>Address: {item.address}</Text>
-                <Text style={styles.logText}>Signal Strength: {item.signalStrength}</Text>
                 <Text style={styles.logText}>Time: {item.time}</Text>
               </View>
             )}
-            onEndReached={() => fetchLogsByEventId(selectedEventId)}
+            onEndReached={() => fetchLogsByEventId(selectedEventId!)}
             onEndReachedThreshold={0.5}
             ListFooterComponent={
               loading ? (
                 <ActivityIndicator size="small" />
-              ) : !hasMore ? (
+              ) : (!hasMoreBeat && !hasMoreWeat) ? (
                 <Text style={styles.endText}>No more logs</Text>
               ) : null
             }
@@ -146,40 +169,5 @@ const EventLogsScreen: React.FC = () => {
     </View>
   );
 };
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, padding: 16 },
-//   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: 'white', marginTop: 16 },
-//   subTitle: { fontSize: 18, fontWeight: '600', marginVertical: 10, color: 'white' },
-//   eventButton: {
-//     backgroundColor: '#007bff',
-//     padding: 12,
-//     marginVertical: 6,
-//     borderRadius: 8,
-//     alignItems: 'center',
-//   },
-//   eventButtonText: { color: 'white', fontSize: 16 },
-//   noData: { textAlign: 'center', marginTop: 20 },
-//   logContainer: { flex: 1 },
-//   logCard: {
-//     backgroundColor: '#333',
-//     marginVertical: 6,
-//     padding: 12,
-//     borderRadius: 8,
-//   },
-//   logText: { color: 'white' },
-//   endText: { textAlign: 'center', marginVertical: 12, color: '#888' },
-//   backButton: { marginTop: 12, alignItems: 'center' },
-//   backButtonText: { color: '#007bff', fontSize: 16 },
-//   bottomBarContainer: {
-//     position: 'absolute',
-//     bottom: -32,
-//     left: 0,
-//     right: 0,
-//     maxHeight: '40%', // Adjust as needed if content is tall
-//     padding: 16,
-//     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-//   },
-// });
 
 export default EventLogsScreen;

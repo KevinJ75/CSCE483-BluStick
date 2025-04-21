@@ -1,49 +1,51 @@
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import firestore from '@react-native-firebase/firestore';
 
-export const findCommonAddresses = async (eventIDs: string[]) => {
-  if (!eventIDs || eventIDs.length === 0) return [];
+export interface CommonAddress {
+  macAddress: string;
+  occurrences: any[]; // each now has `.source` === 'BLE' | 'WiFi'
+}
 
-  try {
-    const addressMap: Record<string, { eventID: string; data: any }[]> = {};
+export const findCommonAddresses = async (eventIds: string[]): Promise<CommonAddress[]> => {
+  if (!eventIds.length) return [];
 
-    // Break eventIDs into chunks of 10 for Firestore `in` queries
-    const chunks = [];
-    for (let i = 0; i < eventIDs.length; i += 10) {
-      chunks.push(eventIDs.slice(i, i + 10));
-    }
+  const addressMap: Record<string, { eventId: string; data: any }[]> = {};
+  const chunks: string[][] = [];
 
-    for (const chunk of chunks) {
+  for (let i = 0; i < eventIds.length; i += 10) {
+    chunks.push(eventIds.slice(i, i + 10));
+  }
+
+  for (const chunk of chunks) {
+    for (const source of ['beat', 'weat'] as const) {
       const q = firestore()
-        .collection('mac_address_ex')
+        .collection(source)
         .where('eventID', 'in', chunk);
-      const snapshot = await q.get();
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const mac = data.mac_address;
-        const eventID = data.eventID;
-        if (mac && eventID) {
-          if (!addressMap[mac]) addressMap[mac] = [];
-          addressMap[mac].push({ eventID, data });
-        }
+
+      const snap = await q.get();
+
+      snap.docs.forEach(docSnap => {
+        const d = docSnap.data();
+        const mac = d.macAddress as string;
+        const eid = d.eventId as string;
+        if (!mac || !eid) return;
+
+        if (!addressMap[mac]) addressMap[mac] = [];
+        // Spread in `source` here:
+        addressMap[mac].push({
+          eventId: eid,
+          data: { ...d, source: source === 'beat' ? 'BLE' : 'WiFi' }
+        });
       });
     }
-
-    // Filter to only MAC addresses present in ALL selected events
-    const commonAddresses = Object.entries(addressMap)
-      .filter(([_, entries]) => {
-        const uniqueEventIDs = new Set(entries.map(e => e.eventID));
-        return uniqueEventIDs.size === eventIDs.length;
-      })
-      .map(([mac_address, entries]) => ({
-        mac_address,
-        occurrences: entries.map(e => e.data),
-      }));
-
-    console.log('Common MAC addresses across all events:', commonAddresses);
-    return commonAddresses;
-  } catch (error) {
-    console.error('Error retrieving common MAC addresses:', error);
-    return [];
   }
+
+  return Object.entries(addressMap)
+    .filter(([_, entries]) => {
+      const seen = new Set(entries.map(e => e.eventId));
+      return seen.size === eventIds.length;
+    })
+    .map(([macAddress, entries]) => ({
+      macAddress,
+      occurrences: entries.map(e => e.data)
+    }));
 };
