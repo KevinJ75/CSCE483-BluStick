@@ -53,15 +53,15 @@ const EventLogsScreen: React.FC = () => {
 
     try {
       let beatQuery = firestore()
-        .collection('beat')
+        .collection('ble')
         .where('eventId', '==', eventId)
-        .orderBy('detectedTimestamp', 'desc')
+        .orderBy('timestamp', 'desc')
         .limit(PAGE_SIZE);
 
       let weatQuery = firestore()
-        .collection('weat')
+        .collection('wifi')
         .where('eventId', '==', eventId)
-        .orderBy('detectedTimestamp', 'desc')
+        .orderBy('timestamp', 'desc')
         .limit(PAGE_SIZE);
 
       if (lastBeatDoc && !reset) {
@@ -76,18 +76,20 @@ const EventLogsScreen: React.FC = () => {
 
       const beatLogs = beatSnap.docs.map(doc => ({
         id: doc.id,
-        type: 'beat',
-        device: doc.data().detectedBluStickId,
+        type: 'ble',
+        device: doc.data().bluStickId,
         address: doc.data().macAddress,
-        time: doc.data().detectedTimestamp?.toDate().toLocaleString(),
+        manufacture: doc.data().manufacturer,
+        time: doc.data().timestamp?.toDate().toLocaleString(),
       }));
 
       const weatLogs = weatSnap.docs.map(doc => ({
         id: doc.id,
-        type: 'weat',
+        type: 'wifi',
         device: doc.data().detectedBluStickId,
         address: doc.data().macAddress,
-        time: doc.data().detectedTimestamp?.toDate().toLocaleString(),
+        manufacture: doc.data().manufacturer,
+        time: doc.data().timestamp?.toDate().toLocaleString(),
       }));
 
       const combinedLogs = [...logs, ...beatLogs, ...weatLogs].sort(
@@ -143,6 +145,7 @@ const EventLogsScreen: React.FC = () => {
                 <Text style={styles.logText}>Source: {item.type}</Text>
                 <Text style={styles.logText}>Device ID: {item.device}</Text>
                 <Text style={styles.logText}>Address: {item.address}</Text>
+                <Text style={styles.logText}>Manufacture: {item.manufacture}</Text>
                 <Text style={styles.logText}>Time: {item.time}</Text>
               </View>
             )}
